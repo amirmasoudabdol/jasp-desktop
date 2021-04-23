@@ -171,6 +171,7 @@ public slots:
 	void		copy();
 	void		paste();
 	void		edit(QModelIndex here);
+	void		destroyEditItem();
 	void		editFinished(QModelIndex here, QVariant  editedValue);
 	
 protected:

@@ -599,6 +599,8 @@ void EngineSync::pauseEngines()
 {
 	JASPTIMER_SCOPE(EngineSync::pauseEngines);
 
+	Log::log() << "EngineSync::pauseEngines()" << std::endl;
+
 	if(!_engineStarted) return;
 
 	//make sure we process any received messages first.
@@ -622,6 +624,8 @@ void EngineSync::pauseEngines()
 void EngineSync::resumeEngines()
 {
 	JASPTIMER_SCOPE(EngineSync::resumeEngines);
+
+	Log::log() << "EngineSync::resumeEngines()" << std::endl;
 
 	if(!_engineStarted)
 		return;

@@ -883,6 +883,30 @@ void DataSetView::updateExtraColumnItem()
 	connect(_extraColumnItem, &QQuickItem::widthChanged, this, &DataSetView::setExtraColumnX, Qt::UniqueConnection);
 }
 
+void DataSetView::destroyEditItem()
+{
+	Log::log() << "Destroying old edit item (row=" << _prevEditRow << ", col=" << _prevEditCol << ") and context" << std::endl;
+
+	if(!_editItemContextual || _prevEditRow == -1 || _prevEditCol == -1)
+	{
+		Log::log() << "Its already gone" << std::endl;
+		return;
+	}
+
+	_editItemContextual->item		->setVisible(false);
+	_editItemContextual->item		->deleteLater();
+	_editItemContextual->item		= nullptr;
+	_editItemContextual->context	->deleteLater();
+	_editItemContextual->context	= nullptr;
+	_editItemContextual				= nullptr;
+
+	Log::log() << "Restoring text item for old edit item" << std::endl;
+	createTextItem(_prevEditRow, _prevEditCol);
+
+	_prevEditRow = -1;
+	_prevEditCol = -1;
+}
+
 void DataSetView::positionEditItem(int row, int col)
 {
 	if(!_editDelegate)
@@ -892,7 +916,6 @@ void DataSetView::positionEditItem(int row, int col)
 		_editDelegate->setData(
 "import QtQuick 2.9"																					"\n"
 "TextInput { text: itemText; color: itemActive ? 'black' : 'grey'; verticalAlignment: Text.AlignVCenter; \n"
-" //onActiveFocusChanged: if(!activeFocus) dataview.editFinished(index, text); "									"\n"
 " onEditingFinished:					 dataview.editFinished(index, text); "									"\n"
 "}", QUrl());
 
@@ -903,25 +926,16 @@ void DataSetView::positionEditItem(int row, int col)
 	bool			active		= _model->data(ind, _roleNameToRole["filter"]).toBool();
 
 	if(_editItemContextual && !(_prevEditRow == row && _prevEditCol == col)) //remove previous edit item to avoid old values or broken bindings messing everything up. But only if it is in a different place than where we're at
-	{
-		_editItemContextual->item		->setVisible(false);
-		_editItemContextual->item		->deleteLater();
-		_editItemContextual->item		= nullptr;
-		_editItemContextual->context	->deleteLater();
-		_editItemContextual->context	= nullptr;
-		_editItemContextual				= nullptr;
-
-		createTextItem(_prevEditRow, _prevEditCol);
-	}
+		destroyEditItem();
 
 
 	if(!_editItemContextual)
 	{
 		_editItemContextual = new ItemContextualized(setStyleDataItem(nullptr, active, col, row));
 
-		forceActiveFocus();
+		//forceActiveFocus();
 
-		//Remove item here
+		Log::log() << "Destroying old text item (row=" << row << ", col=" << col << ") and creating edit item + context" << std::endl;
 		storeTextItem(row, col, true);
 		_prevEditRow = row; //Store info to recreate it later
 		_prevEditCol = col;
@@ -938,7 +952,10 @@ void DataSetView::positionEditItem(int row, int col)
 		_editItemContextual->item->setParentItem(this);
 	}
 	else
+	{
+		Log::log() << "repositioning current edit item (row=" << row << ", col=" << col << ")" << std::endl;
 		setStyleDataItem(_editItemContextual->context, active, col, row);
+	}
 
 	setTextItemInfo(row, col, _editItemContextual->item); //Will set it visible
 }
@@ -1105,7 +1122,7 @@ void DataSetView::setEditing(bool editing)
 {
 	if (_editing == editing)
 		return;
-	
+
 	_editing = editing;
 	
 
@@ -1118,6 +1135,8 @@ void DataSetView::edit(QModelIndex here)
 {
 	if(!here.isValid())
 		return;
+
+	Log::log() << "DataSetView::edit(row=" << here.row() << ", col=" << here.column() << ")" << std::endl;
 	
 	//Turn editing on
 	setEditing(true);
@@ -1136,10 +1155,13 @@ void DataSetView::editFinished(QModelIndex here, QVariant editedValue)
 		return;
 	}
 	
+	Log::log() << "editing finished! old value: '" << _model->data(here).toString() << "'  and new value: '" << editedValue.toString() << "' (row=" << here.row() << ", col=" << here.column() << ")" << std::endl;
+
 	setEditing(false);
 
 	_model->setData(here, editedValue);
-	createTextItem(here.row(), here.column());
+
+	destroyEditItem();
 }
 
 

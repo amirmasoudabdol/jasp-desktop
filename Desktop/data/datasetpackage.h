@@ -77,15 +77,15 @@ public:
 		
 		void				waitForExportResultsReady();
 
-		void				beginLoadingData();
-		void				endLoadingData();
-		void				beginSynchingData();
-		void				endSynchingDataChangedColumns(std::vector<std::string>	&	changedColumns);
+		void				beginLoadingData(	bool informEngines = true);
+		void				endLoadingData(		bool informEngines = true);
+		void				beginSynchingData(	bool informEngines = true);
+		void				endSynchingDataChangedColumns(std::vector<std::string>	&	changedColumns,		bool informEngines = true);
 		void				endSynchingData(std::vector<std::string>				&	changedColumns,
 											std::vector<std::string>				&	missingColumns,
 											std::map<std::string, std::string>		&	changeNameColumns,  //origname -> newname
 											bool										rowCountChanged,
-											bool										hasNewColumns);
+											bool										hasNewColumns,		bool informEngines = true);
 
 		
 		
@@ -268,8 +268,7 @@ signals:
 				void				loadedChanged();
 				void				currentFileChanged();
 				void				newDataLoaded();
-				
-				void dataModeChanged(bool dataMode);
+				void				dataModeChanged(bool dataMode);
 				
 public slots:
 				void				refresh() { beginResetModel(); endResetModel(); }
@@ -281,6 +280,7 @@ public slots:
 				void				setCurrentFile(QString currentFile);
 				void				setFolder(QString folder);
 				void				generateEmptyData();
+				void				logDataModeChanged(bool dataMode);
 
 				
 private:

@@ -46,6 +46,7 @@ DataSetPackage::DataSetPackage(QObject * parent) : QAbstractItemModel(parent)
 	connect(this,						&DataSetPackage::currentFileChanged,	this, &DataSetPackage::windowTitleChanged);
 	connect(this,						&DataSetPackage::folderChanged,			this, &DataSetPackage::windowTitleChanged);
 	connect(this,						&DataSetPackage::currentFileChanged,	this, &DataSetPackage::nameChanged);
+	connect(this,						&DataSetPackage::dataModeChanged,		this, &DataSetPackage::logDataModeChanged);
 	connect(RibbonModel::singleton(),	&RibbonModel::dataModeChanged,			this, &DataSetPackage::dataModeChanged);
 }
 
@@ -143,6 +144,12 @@ void DataSetPackage::generateEmptyData()
 	endLoadingData();
 	emit newDataLoaded();
 	resetAllFilters();
+}
+
+//Some debugprinting
+void DataSetPackage::logDataModeChanged(bool dataMode)
+{
+	Log::log() << "Data Mode " << (dataMode ? "on" : "off") << "!" << std::endl;
 }
 
 QModelIndex DataSetPackage::index(int row, int column, const QModelIndex &parent) const
@@ -816,13 +823,13 @@ int DataSetPackage::setColumnTypeFromQML(int columnIndex, int newColumnType)
 	return int(getColumnType(columnIndex));
 }
 
-void DataSetPackage::beginSynchingData()
+void DataSetPackage::beginSynchingData(bool informEngines)
 {
-	beginLoadingData();
+	beginLoadingData(informEngines);
 	_synchingData = true;
 }
 
-void DataSetPackage::endSynchingDataChangedColumns(std::vector<std::string>	&	changedColumns)
+void DataSetPackage::endSynchingDataChangedColumns(std::vector<std::string>	&	changedColumns, bool informEngines)
 {
 	 std::vector<std::string>				missingColumns;
 	 std::map<std::string, std::string>		changeNameColumns;
@@ -834,21 +841,22 @@ void DataSetPackage::endSynchingData(std::vector<std::string>			&	changedColumns
 									 std::vector<std::string>			&	missingColumns,
 									 std::map<std::string, std::string>	&	changeNameColumns,  //origname -> newname
 									 bool									rowCountChanged,
-									 bool									hasNewColumns)
+									 bool									hasNewColumns,
+									 bool									informEngines)
 {
 
-	endLoadingData();
+	endLoadingData(informEngines);
 	_synchingData = false;
 	//We convert all of this stuff to qt containers even though this takes time etc. Because it needs to go through a (queued) connection and it might not work otherwise
 	emit datasetChanged(tql(changedColumns), tql(missingColumns), tq(changeNameColumns), rowCountChanged, hasNewColumns);
 }
 
 
-void DataSetPackage::beginLoadingData()
+void DataSetPackage::beginLoadingData(bool informEngines)
 {
 	JASPTIMER_SCOPE(DataSetPackage::beginLoadingData);
 
-	_enginesLoadedAtBeginSync = !enginesInitializing();
+	_enginesLoadedAtBeginSync = informEngines && !enginesInitializing();
 
 	if(_enginesLoadedAtBeginSync)
 		pauseEngines();
@@ -856,13 +864,13 @@ void DataSetPackage::beginLoadingData()
 	beginResetModel();
 }
 
-void DataSetPackage::endLoadingData()
+void DataSetPackage::endLoadingData(bool informEngines)
 {
 	JASPTIMER_SCOPE(DataSetPackage::endLoadingData);
 
 	endResetModel();
 
-	if(_enginesLoadedAtBeginSync)
+	if(_enginesLoadedAtBeginSync && informEngines)
 		resumeEngines();
 
 	emit modelInit();
@@ -1476,7 +1484,7 @@ void DataSetPackage::pasteSpreadsheet(size_t row, size_t col, const std::vector<
 			colCountChanged = int(col + colMax) > columnCount()	;
 	
 	//beginResetModel();
-	beginSynchingData();
+	beginSynchingData(false);
 	
 	if(colCountChanged || rowCountChanged)	
 		setDataSetSize(colMax + col, rowMax + row);
@@ -1496,14 +1504,8 @@ void DataSetPackage::pasteSpreadsheet(size_t row, size_t col, const std::vector<
 	}
 	
 	
-	std::vector<std::string>				missingColumns;
-	std::map<std::string, std::string>		changeNameColumns;
-	endSynchingData(changed, missingColumns, changeNameColumns, rowCountChanged, colCountChanged);
-	
-	//endResetModel();
-	
-	//emit datasetChanged(tql(changed), {}, {}, rowCountChanged, colCountChanged);
-	
+	endSynchingDataChangedColumns(changed, false);
+
 	if(isLoaded()) setModified(true);
 }
 

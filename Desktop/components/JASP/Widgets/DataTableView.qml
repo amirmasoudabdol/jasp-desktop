@@ -47,22 +47,31 @@ FocusScope
 					color:					itemActive ? jaspTheme.textEnabled : jaspTheme.textDisabled
 					font:					jaspTheme.font
 					verticalAlignment:		Text.AlignVCenter
+					onEditingFinished:		finishEdit();
+					z:						10
 
-					//onEditingFinished:							dataTableView.view.editFinished(index, text);
-					onActiveFocusChanged:	if(!activeFocus)	dataTableView.view.editFinished(index, text);
-					
+					property bool alreadyFinished:	false
+
+					function finishEdit()
+					{
+						if(!alreadyFinished)
+							dataTableView.view.editFinished(index, text);
+						alreadyFinished = true;
+					}
+
+
 					Rectangle
 					{
-					color:	"yellow"
-					z:		-1
-					anchors
-					{
-						fill:			 parent
-						topMargin:		-dataTableView.itemVerticalPadding
-						leftMargin:		-dataTableView.itemHorizontalPadding
-						rightMargin:	-dataTableView.itemHorizontalPadding
-						bottomMargin:	-dataTableView.itemVerticalPadding
-					}
+						color:	jaspTheme.whiteBroken
+						z:		-1
+						anchors
+						{
+							fill:			 parent
+							topMargin:		-dataTableView.itemVerticalPadding
+							leftMargin:		-dataTableView.itemHorizontalPadding
+							rightMargin:	-dataTableView.itemHorizontalPadding
+							bottomMargin:	-dataTableView.itemVerticalPadding
+						}
 					}
 
 				}
