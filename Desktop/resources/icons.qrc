@@ -216,5 +216,9 @@
         <file>icons/darkTheme/data-button-insert.svg</file>
         <file>icons/darkTheme/data-button-erase.svg</file>
         <file>icons/darkTheme/data-button-external.svg</file>
+        <file>icons/lightTheme/data-button-erase.svg</file>
+        <file>icons/lightTheme/data-button-external.svg</file>
+        <file>icons/lightTheme/data-button-insert.svg</file>
+        <file>icons/lightTheme/data-button-new.svg</file>
     </qresource>
 </RCC>

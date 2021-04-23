@@ -1164,7 +1164,7 @@ void DataSetView::editFinished(QModelIndex here, QVariant editedValue)
 	destroyEditItem();
 }
 
-
+fix met filter index
 
 QQmlContext * DataSetView::setStyleDataItem(QQmlContext * previousContext, bool active, size_t col, size_t row)
 {
