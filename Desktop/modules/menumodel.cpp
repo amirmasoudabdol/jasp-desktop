@@ -17,17 +17,17 @@
 //
 
 
-#include "analysismenumodel.h"
+#include "menumodel.h"
 #include "modules/ribbonbutton.h"
 
 
-AnalysisMenuModel::AnalysisMenuModel(RibbonButton *parent, Modules::DynamicModule * module)
+MenuModel::MenuModel(RibbonButton *parent, Modules::DynamicModule * module)
 	: QAbstractListModel(parent), _ribbonButton(parent), _module(module)
 {
 
 }
 
-QVariant AnalysisMenuModel::data(const QModelIndex &index, int role) const
+QVariant MenuModel::data(const QModelIndex &index, int role) const
 {
 	if (index.row() >= rowCount())
 		return QVariant();
@@ -47,7 +47,7 @@ QVariant AnalysisMenuModel::data(const QModelIndex &index, int role) const
 }
 
 
-QHash<int, QByteArray> AnalysisMenuModel::roleNames() const
+QHash<int, QByteArray> MenuModel::roleNames() const
 {
 	static const auto roles = QHash<int, QByteArray>{
 		{	DisplayRole,            "displayText"		},
@@ -61,7 +61,7 @@ QHash<int, QByteArray> AnalysisMenuModel::roleNames() const
 	return roles;
 }
 
-Modules::AnalysisEntry *AnalysisMenuModel::getAnalysisEntry(const std::string& name)
+Modules::AnalysisEntry *MenuModel::getAnalysisEntry(const std::string& name)
 {
 	for (Modules::AnalysisEntry* analysis : analysisEntries())
 	{
@@ -72,7 +72,7 @@ Modules::AnalysisEntry *AnalysisMenuModel::getAnalysisEntry(const std::string& n
 	return nullptr;
 }
 
-const std::vector<Modules::AnalysisEntry*> &	AnalysisMenuModel::analysisEntries() const
+const std::vector<Modules::AnalysisEntry*> &	MenuModel::analysisEntries() const
 {
 	static const std::vector<Modules::AnalysisEntry*> dummy;
 

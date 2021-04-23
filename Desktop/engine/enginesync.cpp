@@ -674,6 +674,12 @@ bool EngineSync::allEnginesInitializing()
 	return true;
 }
 
+void EngineSync::dataModeChanged(bool dataMode)
+{
+	if(dataMode)	pauseEngines();
+	else			resumeEngines();
+}
+
 void EngineSync::moduleLoadingFailedHandler(const QString & moduleName, const QString & errorMessage, int channelID)
 {
 	Log::log() << "Received EngineSync::moduleLoadingFailedHandler(" << moduleName.toStdString() << ", " << errorMessage.toStdString() << ", " << channelID << ")" << std::endl;

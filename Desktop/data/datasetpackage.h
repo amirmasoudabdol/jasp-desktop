@@ -48,6 +48,7 @@ class DataSetPackage : public QAbstractItemModel //Not QAbstractTableModel becau
 	Q_PROPERTY(bool			modified				READ isModified				WRITE setModified		NOTIFY isModifiedChanged			)
 	Q_PROPERTY(bool			loaded					READ isLoaded				WRITE setLoaded			NOTIFY loadedChanged				)
 	Q_PROPERTY(QString		currentFile				READ currentFile			WRITE setCurrentFile	NOTIFY currentFileChanged			)
+	Q_PROPERTY(bool			dataMode				READ dataMode										NOTIFY dataModeChanged				)
 
 	typedef std::map<std::string, std::map<int, std::string>> emptyValsType;
 
@@ -86,6 +87,9 @@ public:
 											bool										rowCountChanged,
 											bool										hasNewColumns);
 
+		
+		
+		void initColumnWithStrings(QVariant colId, std::string newName, const std::vector<std::string> &values);
 
 		QHash<int, QByteArray>		roleNames()																					const	override;
 				int					rowCount(	const QModelIndex &parent = QModelIndex())										const	override;
@@ -110,6 +114,8 @@ public:
 				std::string			id()								const	{ return _id;							}
 				QString				name()								const;
 				QString				folder()							const	{ return _folder;						}
+				bool				dataMode()							const;
+				
 				bool				isReady()							const	{ return _analysesHTMLReady;			}
 				bool				isLoaded()							const	{ return _isLoaded;						 }
 				bool				isArchive()							const	{ return _isArchive;					  }
@@ -153,7 +159,7 @@ public:
 				void				setAnalysesHTMLReady()							{ _analysesHTMLReady			= true;				}
 				void				setId(std::string id)							{ _id							= id;				}
 				void				setWaitingForReady()							{ _analysesHTMLReady			= false;			}
-				void				setLoaded(bool loaded = true);
+				void				setLoaded(bool loaded);
 
 				bool						initColumnAsScale(				size_t colNo,			std::string newName, const std::vector<double>		& values);
 				bool						initColumnAsScale(				std::string colName,	std::string newName, const std::vector<double>		& values)	{ return initColumnAsScale(_dataSet->getColumnIndex(colName), newName, values); }
@@ -170,6 +176,8 @@ public:
 				std::map<int, std::string>	initColumnAsNominalText(		size_t colNo,			std::string newName, const std::vector<std::string>	& values,	const std::map<std::string, std::string> & labels = std::map<std::string, std::string>());
 				std::map<int, std::string>	initColumnAsNominalText(		std::string colName,	std::string newName, const std::vector<std::string>	& values,	const std::map<std::string, std::string> & labels = std::map<std::string, std::string>())	{ return initColumnAsNominalText(_dataSet->getColumnIndex(colName), newName, values, labels); }
 				std::map<int, std::string>	initColumnAsNominalText(		QVariant colID,			std::string newName, const std::vector<std::string>	& values,	const std::map<std::string, std::string> & labels = std::map<std::string, std::string>());
+				
+				void						pasteSpreadsheet(size_t row, size_t column, const std::vector<std::vector<QString>> & cells);
 
 				void						columnSetDefaultValues(std::string columnName, columnType colType = columnType::unknown);
 				bool						createColumn(std::string name, columnType colType);
@@ -211,6 +219,7 @@ public:
 				int							getColumnIndex(QString name)			const	{ return getColumnIndex(name.toStdString()); }
 				std::vector<int>			getColumnDataInts(size_t columnIndex);
 				std::vector<double>			getColumnDataDbls(size_t columnIndex);
+				std::vector<std::string>	getColumnDataStrings(size_t columnIndex);
 				void						setColumnDataInts(size_t columnIndex, std::vector<int> ints);
 				void						setColumnDataDbls(size_t columnIndex, std::vector<double> dbls);
 				size_t						getMaximumColumnWidthInCharacters(int columnIndex) const;
@@ -227,12 +236,7 @@ public:
 
 				std::vector<bool>			filterVector();
 				void						setFilterVectorWithoutModelUpdate(std::vector<bool> newFilterVector) { if(_dataSet) _dataSet->setFilterVector(newFilterVector); }
-
-
-
-
-
-
+		
 signals:
 				void				datasetChanged(	QStringList				changedColumns,
 													QStringList				missingColumns,
@@ -263,7 +267,10 @@ signals:
 				void				windowTitleChanged();
 				void				loadedChanged();
 				void				currentFileChanged();
-
+				void				newDataLoaded();
+				
+				void dataModeChanged(bool dataMode);
+				
 public slots:
 				void				refresh() { beginResetModel(); endResetModel(); }
 				void				refreshColumn(QString columnName);
@@ -273,7 +280,9 @@ public slots:
 				void				emptyValuesChangedHandler();
 				void				setCurrentFile(QString currentFile);
 				void				setFolder(QString folder);
+				void				generateEmptyData();
 
+				
 private:
 				///This function allows you to run some code that changes something in the _dataSet and will try to enlarge it if it fails with an allocation error. Otherwise it might keep going for ever?
 				void				enlargeDataSetIfNecessary(std::function<void()> tryThis, const char * callerText);

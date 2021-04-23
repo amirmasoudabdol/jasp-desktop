@@ -745,7 +745,9 @@ void Analyses::prepareForLanguageChange()
 	applyToAll([&](Analysis * a)
 	{ 
 		a->setRefreshBlocked(true); 
-		a->abort();
+		
+		if(!a->isFinished())
+			a->abort();
 	});
 }
 
@@ -759,6 +761,21 @@ void Analyses::languageChangedHandler()
 	});
 	refreshAllAnalyses();
 	emit setResultsMeta(tq(_resultsMeta.toStyledString()));
+}
+
+void Analyses::dataModeChanged(bool dataMode)
+{
+	
+	applyToAll([&](Analysis * a) 
+	{
+		a->setRefreshBlocked(dataMode);	
+		
+		if(dataMode && !a->isFinished())
+			a->abort();
+	});
+	
+	if(dataMode)
+		refreshAllAnalyses();
 }
 
 void Analyses::resultsMetaChanged(QString json)

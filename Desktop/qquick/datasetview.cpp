@@ -10,15 +10,20 @@
 #include "qquick/jasptheme.h"
 #include <QScreen>
 #include "data/datasetpackage.h"
+#include <QGuiApplication>
+#include <QClipboard>
+#include "utils.h"
+#include "utilities/languagemodel.h"
+#include "data/datasettablemodel.h"
 
 DataSetView * DataSetView::_lastInstancedDataSetView = nullptr;
 
-DataSetView::DataSetView(QQuickItem *parent) : QQuickItem (parent)
+DataSetView::DataSetView(QQuickItem *parent) : QQuickItem (parent), _selectionModel(new QItemSelectionModel(nullptr, this))
 {
-	setFlag(QQuickItem::ItemHasContents, true);
-	setFlag(ItemIsFocusScope);
+	setFlag(QQuickItem::ItemHasContents);
+	//setFlag(QQuickItem::ItemIsFocusScope);
 
-	material.setColor(Qt::gray);
+	_material.setColor(Qt::gray);
 
 	connect(this, &DataSetView::parentChanged,					this, &DataSetView::myParentChanged);
 
@@ -57,6 +62,9 @@ void DataSetView::setModel(QAbstractItemModel * model)
 		connect(_model, &QAbstractItemModel::headerDataChanged,		this, &DataSetView::modelHeaderDataChanged	);
 		connect(_model, &QAbstractItemModel::modelAboutToBeReset,	this, &DataSetView::modelAboutToBeReset		);
 		connect(_model, &QAbstractItemModel::modelReset,			this, &DataSetView::modelWasReset			);
+
+		_selectionModel->setModel(_model);
+		emit selectionModelChanged(); //Or maybe it hasn't?
 
 		setRolenames();
 
@@ -151,12 +159,16 @@ void DataSetView::modelHeaderDataChanged(Qt::Orientation, int, int)
 
 void DataSetView::modelAboutToBeReset()
 {
+	//Ok, this weird hack is because if I do not recreate the selectionmodel after resetting everything crashes real hard. Maybe there is a bug in Qt?
+	delete _selectionModel;
+	_selectionModel = nullptr;
 	_storedLineFlags.clear();
 	_storedDisplayText.clear();
 }
 
 void DataSetView::modelWasReset()
 {
+	_selectionModel = new QItemSelectionModel(_model, this);
 	setRolenames();
 	calculateCellSizes();
 }
@@ -572,14 +584,7 @@ QQuickItem * DataSetView::createTextItem(int row, int col)
 
 		JASPTIMER_RESUME(createTextItem setValues);
 
-		textItem->setHeight(_dataRowsMaxHeight		- (2 * _itemVerticalPadding));
-		textItem->setWidth(_dataColsMaxWidth[col]	- (2 * _itemHorizontalPadding));
-
-		textItem->setX(_colXPositions[col]				+ _itemHorizontalPadding);
-		textItem->setY(((row + 1) * _dataRowsMaxHeight)	+ _itemVerticalPadding);
-
-		textItem->setZ(-4);
-		textItem->setVisible(true);
+		setTextItemInfo(row, col, textItem);
 
 		_cellTextItems[col][row] = itemCon;
 
@@ -589,6 +594,18 @@ QQuickItem * DataSetView::createTextItem(int row, int col)
 	JASPTIMER_STOP(createTextItem);
 
 	return _cellTextItems[col][row]->item;
+}
+
+void DataSetView::setTextItemInfo(int row, int col, QQuickItem * textItem)
+{
+	textItem->setHeight(_dataRowsMaxHeight		- (2 * _itemVerticalPadding));
+	textItem->setWidth(_dataColsMaxWidth[col]	- (2 * _itemHorizontalPadding));
+
+	textItem->setX(_colXPositions[col]				+ _itemHorizontalPadding);
+	textItem->setY(((row + 1) * _dataRowsMaxHeight)	+ _itemVerticalPadding);
+
+	textItem->setZ(-4);
+	textItem->setVisible(true);
 }
 
 void DataSetView::storeTextItem(int row, int col, bool cleanUp)
@@ -708,7 +725,8 @@ void DataSetView::storeRowNumber(int row)
 
 	rowNumber->item->setVisible(false);
 
-	_rowNumberStorage.push(rowNumber);
+	if (_cacheItems)		_rowNumberStorage.push(rowNumber);
+	else					delete rowNumber;
 }
 
 
@@ -804,7 +822,8 @@ void DataSetView::storeColumnHeader(int col)
 
 	columnHeader->item->setVisible(false);
 
-	_columnHeaderStorage.push(columnHeader);
+	if (_cacheItems)		_columnHeaderStorage.push(columnHeader);
+	else					delete columnHeader;
 }
 
 QQuickItem * DataSetView::createleftTopCorner()
@@ -844,7 +863,7 @@ QQuickItem * DataSetView::createleftTopCorner()
 void DataSetView::updateExtraColumnItem()
 {
 	//Log::log() << "createleftTopCorner() called!\n" << std::flush;
-	if(_extraColumnItem == nullptr)
+	if(!_extraColumnItem)
 		return;
 
 	_extraColumnItem->setHeight(_dataRowsMaxHeight);
@@ -854,15 +873,234 @@ void DataSetView::updateExtraColumnItem()
 	connect(_extraColumnItem, &QQuickItem::widthChanged, this, &DataSetView::setExtraColumnX, Qt::UniqueConnection);
 }
 
+void DataSetView::positionEditItem(int row, int col)
+{
+	if(!_editItem)
+	{
+		Log::log() << "positionEditItem called without editItem..." << std::endl;
+		return;
+	}
+	
+	if(!_editItemContext)
+		_editItemContext = new QQmlContext(qmlContext(this), this);
+		
+	_editItem->cont		
+	
+	
+	setTextItemInfo(row, col, _editItem); //Will set it visible
+}
+
 void DataSetView::setExtraColumnX()
 {
 	_extraColumnItem->setX(_viewportX + _viewportW - extraColumnWidth());
 }
 
+void DataSetView::setSelectionStart(QModelIndex selectionStart)
+{
+	if (_selectionStart == selectionStart)
+		return;
+	
+	Log::log() << "DataSetView::setSelectionStart( row=" << selectionStart.row() << ", col=" << selectionStart.column() << " )" << std::endl;
+		
+	_selectionStart = selectionStart;
+	emit selectionStartChanged(_selectionStart);
+	
+	_selectionModel->select(selectionStart, QItemSelectionModel::SelectCurrent);
+	
+	edit(selectionStart);
+}
+
+void DataSetView::setSelectionEnd(QModelIndex selectionEnd) 
+{
+	if (_selectionEnd == selectionEnd)
+		return;
+	
+	Log::log() << "DataSetView::setSelectionEnd( row=" << selectionEnd.row() << ", col=" << selectionEnd.column() << " )" << std::endl;
+
+	_selectionEnd = selectionEnd;
+	emit selectionEndChanged(_selectionEnd);
+	
+	_selectionModel->select(QItemSelection(_selectionStart, _selectionEnd), QItemSelectionModel::ClearAndSelect);
+	
+	_selectScrollMs = Utils::currentMillis();
+}
+
+
+bool DataSetView::relaxForSelectScroll()
+{
+	long curMs = Utils::currentMillis();
+	
+	//Log::log() << "_selectScrollMs = " << _selectScrollMs << ", curMs = " << curMs << std::endl;
+	
+	if(curMs < _selectScrollMs)
+		return false;
+	
+	_selectScrollMs = curMs + 200;
+	return true;
+}
+
+
+void DataSetView::pollSelectScroll(QModelIndex mouseIndex)
+{
+	if(!relaxForSelectScroll())
+		return;
+	
+	const int b = 3;
+
+	//Log::log() << "DataSetView::pollSelectScroll row=" << mouseIndex.row() << "col=" << mouseIndex.column() << std::endl;
+	
+	if(mouseIndex.column()	- b <  _currentViewportColMin + _viewportMargin /*&& mouseIndex.column()	> 0*/							) emit selectionBudgesLeft	();
+	if(mouseIndex.column()	+ b >= _currentViewportColMax - _viewportMargin /*&& mouseIndex.column()	< _model->columnCount() - 1*/	) emit selectionBudgesRight	();
+	if(mouseIndex.row()		- b <  _currentViewportRowMin + _viewportMargin /*&& mouseIndex.row()		> 0*/							) emit selectionBudgesUp	();
+	if(mouseIndex.row()		+ b >= _currentViewportRowMax - _viewportMargin /*&& mouseIndex.row()		< _model->rowCount() - 1*/		) emit selectionBudgesDown	();
+}
+
+
+void DataSetView::copy()
+{
+	QModelIndexList selected = _selectionModel->selectedIndexes();
+	
+	QStringList					all;
+	std::vector<QStringList>	rows;
+	
+	int previousRow = -1;
+	for(const QModelIndex & selectee : selected) //How do I know this is the right order? Random SO post. It does however seem to work and it would be surprising for it to suddenly change.
+	{
+		if(selectee.row() != previousRow)
+		{
+			if(rows.size() > 0)
+				all.append(rows[ rows.size()-1 ].join("\t"));
+			rows.push_back({});
+		}
+		
+		QVariant valVar = _model->data(selectee);
+		std::string val = fq(valVar.toString());
+		
+		rows[ rows.size()-1 ].append(
+						valVar.type() == QVariant::Double							? 
+						QLocale::system().toString(valVar.toDouble())				: //To make sure commas etc are formatted as the system expects.
+						stringUtils::escapeValue(val) ? '"'+tq(val)+"'" : tq(val))	;
+		previousRow = selectee.row();
+	}
+	
+	all.append(rows[ rows.size()-1 ].join("\t"));
+	QString copyThis = all.join("\n");
+	
+	//Log::log() << "copying:\n" << copyThis << "\nThats it" << std::endl;
+	
+	QGuiApplication::clipboard()->setText(copyThis);
+}
+
+QModelIndex DataSetView::selectionTopLeft() const
+{
+	int	r = INT_MAX, 
+		c = INT_MAX;
+	
+	for(const QModelIndex & i : _selectionModel->selectedIndexes())
+	{
+		r = std::min(r, i.row());
+		c = std::min(c, i.column());
+	}
+	
+	if(r == INT_MAX)	r = 0;
+	if(c == INT_MAX)	c = 0;
+	
+	return _model->index(r, c);
+}
+
+void DataSetView::paste()
+{
+	QClipboard * clipboard = QGuiApplication::clipboard();
+	
+	std::vector<std::vector<QString>> newData;
+	
+	size_t row = 0, col = 0;
+	for(const QString & rowStr : clipboard->text().split("\n"))
+	{
+		col = 0;
+		if(rowStr != "")
+			for(const QString & cellStr : rowStr.split("\t"))
+			{
+				if(newData.size()		<= col) newData.	 resize(col+1);
+				if(newData[col].size()	<= row)	newData[col].resize(row+1);
+				
+				newData[col][row] = cellStr;
+				col++;
+			}
+		row++;
+	}
+		
+	if(qobject_cast<DataSetTableModel*>(_model) != nullptr)
+	{
+		QModelIndex topLeft = selectionTopLeft();
+		DataSetPackage::pkg()->pasteSpreadsheet(topLeft.row(), topLeft.column(), newData);
+	}
+}
+
+void DataSetView::setEditDelegate(QQuickItem *editItem)
+{
+	if (_editItem == editItem)
+		return;
+	
+	_editItem = editItem;
+	emit editDelegateChanged(_editItem);
+}
+
+
+
+void DataSetView::setEditing(bool editing)
+{
+	if (_editing == editing)
+		return;
+	
+	_editing = editing;
+	
+
+	//Log::log() << "DataSetView::setShiftSelectActive( " << (shiftSelectActive? "active!" : "inactive!") << " )" << std::endl;
+	
+	emit editingChanged(_editing);
+}
+
+void DataSetView::edit(QModelIndex here)
+{
+	if(!here.isValid())
+		return;
+	
+	//First I need to remove the textitem at here
+	storeTextItem(here.row(), here.column(), true);
+	
+	//Then recontextualize editItem and place it at here
+	positionEditItem(here.row(), here.column());
+	
+	//Turn editing on
+	setEditing(true);
+	
+	//when editItem is done or loses focus and the contents changed, this calls back to editFinished which will use setData etc
+	//this will also turn editing off again and replace editItem by normal item
+}
+
+void DataSetView::editFinished(QModelIndex here, QVariant editedValue)
+{
+	if(!editing())
+	{
+		Log::log() << "editFinished called while not editing..." << std::endl;
+		return;
+	}
+	
+	setEditing(false);
+	_editItem->setVisible(false);
+	
+	_model->setData(here, editedValue);
+	
+	createTextItem(here.row(), here.column());
+}
+
+
+
 QQmlContext * DataSetView::setStyleDataItem(QQmlContext * previousContext, bool active, size_t col, size_t row)
 {
 	QModelIndex idx = _model->index(row, col);
-
+	
 	bool isEditable(_model->flags(idx) & Qt::ItemIsEditable);
 
 	if(isEditable || _storedDisplayText.count(row) == 0 || _storedDisplayText[row].count(col) == 0)
@@ -882,6 +1120,7 @@ QQmlContext * DataSetView::setStyleDataItem(QQmlContext * previousContext, bool 
 	previousContext->setContextProperty("itemInputType",	_model->data(idx, _roleNameToRole["itemInputType"]));
 	previousContext->setContextProperty("columnIndex",		static_cast<int>(col));
 	previousContext->setContextProperty("rowIndex",			static_cast<int>(row));
+	previousContext->setContextProperty("index",			idx);
 	previousContext->setContextProperty("isDynamic",		true);
 	previousContext->setContextProperty("tableView",		_tableViewItem);
 
@@ -1009,6 +1248,18 @@ void DataSetView::setExtraColumnItem(QQuickItem * newItem)
 	}
 }
 
+void DataSetView::setCacheItems(bool cacheItems)
+{
+	if(cacheItems == _cacheItems)
+		return;
+	
+	
+	_cacheItems = cacheItems;
+	emit cacheItemsChanged();
+	
+	calculateCellSizesAndClear(true);
+}
+
 void DataSetView::reloadTextItems()
 {
 	//Store all current items
@@ -1086,7 +1337,7 @@ QSGNode * DataSetView::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
 
 			currentNode->setFlag(QSGNode::OwnsMaterial, false);
 			currentNode->setFlag(QSGNode::OwnsGeometry, true);
-			currentNode->setMaterial(&material);
+			currentNode->setMaterial(&_material);
 
 			justAdded = true;
 

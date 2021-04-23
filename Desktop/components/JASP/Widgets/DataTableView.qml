@@ -1,6 +1,7 @@
-import QtQuick				2.9
+import QtQuick				2.15
 import QtQuick.Controls		1.4 as Old
-import QtQuick.Controls		2.2
+import QtQuick.Controls		2.15
+import QtQml.Models			2.15
 import QtGraphicalEffects	1.0
 
 
@@ -20,19 +21,40 @@ FocusScope
 
 		JASPDataView
 		{
-			focus:				__myRoot.focus
+			focus:					__myRoot.focus
 
-			id:					dataTableView
-			anchors.top:		parent.top
-			anchors.left:		parent.left
-			anchors.right:		parent.right
-			anchors.bottom:		dataStatusBar.top
+			id:						dataTableView
+			anchors.top:			parent.top
+			anchors.left:			parent.left
+			anchors.right:			parent.right
+			anchors.bottom:			dataStatusBar.top
 
 			itemHorizontalPadding:	8 * jaspTheme.uiScale
 			itemVerticalPadding:	8 * jaspTheme.uiScale
 
-			model:				dataSetModel
-			onDoubleClicked:	__myRoot.doubleClicked()
+			model:					dataSetModel
+			onDoubleClicked:		__myRoot.doubleClicked()
+			cacheItems:				!ribbonModel.dataMode
+
+			//doubleClickWorkaround:	!ribbonModel.dataMode
+			//flickableInteractive:	!ribbonModel.dataMode
+			
+			editItem:
+				TextInput
+				{
+					text:					itemText
+					color:					itemActive ? jaspTheme.textEnabled : jaspTheme.textDisabled
+					font:					jaspTheme.font
+					verticalAlignment:		Text.AlignVCenter
+					onEditingFinished:							doneEditing();
+					onActiveFocusChanged:	if(!activeFocus)	doneEditing();
+					
+					function doneEditing()
+					{
+						dataTableView.view.editFinished(index, text);
+						text = Qt.binding(function(){ return itemText }); //make sure it works again in the future
+					}
+				}
 
 			itemDelegate:
 				Text
@@ -41,6 +63,75 @@ FocusScope
 					color:				itemActive ? jaspTheme.textEnabled : jaspTheme.textDisabled
 					font:				jaspTheme.font
 					verticalAlignment:	Text.AlignVCenter
+					
+					MouseArea
+					{
+						z:					1234
+						hoverEnabled:		true
+						anchors.fill:		itemHighlight
+						acceptedButtons:	Qt.LeftButton
+						
+						onPressed:			
+							if(ribbonModel.dataMode)
+							{
+								var shiftPressed = Boolean(mouse.modifiers & Qt.ShiftModifier);
+								
+								if(!shiftPressed)
+								{
+									console.log("about to select start")
+									dataTableView.view.selectionStart    = index;
+								}
+								else
+								{
+									console.log("about to select end")
+									dataTableView.view.selectionEnd = index
+								}
+								
+								console.log("that went fine apparently")
+								forceActiveFocus();
+							}
+											
+						onPositionChanged:	if(ribbonModel.dataMode && Boolean(mouse.modifiers & Qt.ShiftModifier))
+											{
+												dataTableView.view.pollSelectScroll(index)
+												dataTableView.view.selectionEnd = index
+											}
+						
+						Keys.onPressed:	
+						{
+							console.log
+							if(event.modifiers & Qt.ControlModifier)
+								switch(event.key)
+								{
+								case Qt.Key_C:
+									theView.copy();
+									break;
+									
+								case Qt.Key_V:
+									theView.paste();
+									break;
+								}
+						}
+					}
+					
+					Rectangle
+					{
+						id:				itemHighlight
+						visible:		(dataTableView.selection.hasSelection, dataTableView.selection.isSelected(index))
+						
+						color:			jaspTheme.itemHighlight
+						opacity:		1.0
+						z:				-1
+						
+						anchors
+						{
+							fill:			 parent
+							topMargin:		-dataTableView.itemVerticalPadding
+							leftMargin:		-dataTableView.itemHorizontalPadding
+							rightMargin:	-dataTableView.itemHorizontalPadding
+							bottomMargin:	-dataTableView.itemVerticalPadding
+						}
+					}
 				}
 
 			leftTopCornerItem:

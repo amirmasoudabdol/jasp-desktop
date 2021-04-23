@@ -28,7 +28,7 @@
 class RibbonButton;
 
 //This class should not hold it's own data but simply be an interface for the description of a RibbonButton/Dynamic Module
-class AnalysisMenuModel : public QAbstractListModel
+class MenuModel : public QAbstractListModel
 {
 	Q_OBJECT
 
@@ -42,7 +42,7 @@ public:
 		IsEnabledRole
 	};
 
-	AnalysisMenuModel(RibbonButton * parent, Modules::DynamicModule * module);
+	MenuModel(RibbonButton * parent, Modules::DynamicModule * module);
 
 	int										rowCount(const QModelIndex &parent = QModelIndex())			const override	{	return analysisEntries().size();	}
 	QVariant								data(const QModelIndex &index, int role = Qt::DisplayRole)	const override;

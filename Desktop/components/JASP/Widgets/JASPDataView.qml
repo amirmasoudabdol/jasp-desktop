@@ -8,11 +8,12 @@ import JASP				1.0
 FocusScope
 {
 	id: __JASPDataViewRoot
-
+				property alias view:					theView
 				property alias model:					theView.model
-				property alias toolTip:					datasetMouseArea.toolTipText
-				property alias cursorShape:				datasetMouseArea.cursorShape
-				property alias mouseArea:				datasetMouseArea
+				property alias selection:				theView.selection
+				property string toolTip:				""
+				property alias cursorShape:				wheelCatcher.cursorShape
+				property alias mouseArea:				wheelCatcher
 				property bool  doubleClickWorkaround:	true
 
 				property alias itemDelegate:			theView.itemDelegate
@@ -20,6 +21,7 @@ FocusScope
 				property alias columnHeaderDelegate:	theView.columnHeaderDelegate
 				property alias leftTopCornerItem:		theView.leftTopCornerItem
 				property alias extraColumnItem:			theView.extraColumnItem
+				property alias editItem:				theView.editItem
 				property alias cacheItems:				theView.cacheItems
 
 				property alias itemHorizontalPadding:	theView.itemHorizontalPadding
@@ -33,107 +35,98 @@ FocusScope
 
 	readonly	property alias verticalScrollWidth:		vertiScroller.width
 	readonly	property alias horizontalScrollHeight:	horiScroller.height
-	///Aka without a scrollbar
+	
+				property alias horiScroller:			horiScroller
+				property alias vertiScroller:			vertiScroller
+
 	readonly	property real  flickableWidth:			myFlickable.width
-	///Aka without a scrollbar
 	readonly	property real  flickableHeight:			myFlickable.height
 
-				property alias flickableInteractive:	myFlickable.interactive
-
-	JASPMouseAreaToolTipped
-	{
-		id:					datasetMouseArea
-		z:					2
-		anchors.fill:		myFlickable
-		anchors.leftMargin:	theView.rowNumberWidth
-		anchors.topMargin:	theView.headerHeight
-
-		toolTipText:		doubleClickWorkaround ? qsTr("Double click to edit data") : ""
-
-		acceptedButtons:	doubleClickWorkaround ? Qt.LeftButton : Qt.NoButton
-		dragging:			myFlickable.dragging
-		//hoverEnabled:		!flickableInteractive
-
-		property real	lastTimeClicked:	-1
-		property real	doubleClickTime:	400
-
-		onPressed:
-		{
-			if(!doubleClickWorkaround)
+				property real  contentFlickSize:		100
+	
+	Keys.onUpPressed:		budgeUp();
+	Keys.onDownPressed: 	budgeDown();
+	Keys.onLeftPressed:		budgeLeft();
+	Keys.onRightPressed:	budgeRight();
+	
+	function budgeUp()		{ console.log("Budge up		!"); myFlickable.contentY = Math.max(0,													myFlickable.contentY - contentFlickSize) }
+	function budgeDown()	{ console.log("Budge down	!"); myFlickable.contentY = Math.min(myFlickable.contentHeight - myFlickable.height,	myFlickable.contentY + contentFlickSize) }
+	function budgeLeft()	{ console.log("Budge left	!"); myFlickable.contentX = Math.max(0,													myFlickable.contentX - contentFlickSize) }
+	function budgeRight()	{ console.log("Budge right	!"); myFlickable.contentX = Math.min(myFlickable.contentWidth  - myFlickable.width,		myFlickable.contentX + contentFlickSize) }
+	
+	/*function budgeUp()		{ console.log("Budge up		!"); vertiScroller.scrollUp		(true); }
+	function budgeDown()	{ console.log("Budge down	!"); vertiScroller.scrollDown	(true); }
+	function budgeLeft()	{ console.log("Budge left	!"); horiScroller. scrollDown	(true);	}
+	function budgeRight()	{ console.log("Budge right	!"); horiScroller. scrollUp		(true); }*/
+	
+	
+	
+	Keys.onPressed:			
+		if(event.modifiers & Qt.ControlModifier)
+			switch(event.key)
 			{
-				mouse.accepted = false;
-				return;
+			case Qt.Key_C:
+				theView.copy();
+				break;
+				
+			case Qt.Key_V:
+				theView.paste();
+				break;
 			}
-
-			var curTime = new Date().getTime()
-
-			if(lastTimeClicked === -1 || curTime - lastTimeClicked > doubleClickTime)
-			{
-				lastTimeClicked = curTime
-				mouse.accepted = false
-			}
-			else
-			{
-				lastTimeClicked = -1
-				__JASPDataViewRoot.doubleClicked()
-			}
-		}
-
-		onWheel:
-		{
-			if(wheel.angleDelta.y == 120)
-			{
-				if(wheel.modifiers & Qt.ShiftModifier)	horiScroller.scrollUp()
-				else									vertiScroller.scrollUp()
-			}
-			else if(wheel.angleDelta.y == -120)
-			{
-				if(wheel.modifiers & Qt.ShiftModifier)	horiScroller.scrollDown()
-				else									vertiScroller.scrollDown()
-			}
-			/* Might be needed to have scrolling when flickable is !interactive. But something else seems to be stealing the wheel.
-			else if(!flickableInteractive)
-			{
-				horiScroller.scroll( -wheel.pixelDelta.x);
-				vertiScroller.scroll(-wheel.pixelDelta.y);
-			}*/
-			else
-				wheel.accepted = false;
-		}
-
-
-	}
 
 	signal doubleClicked()
 
 	Flickable
 	{
-		id:				myFlickable
-		z:				-1
-		clip:			true
+		id:					myFlickable
+		z:					-1
+		clip:				true
 
-		anchors.top:	parent.top
-		anchors.left:	parent.left
-		anchors.right:	vertiScroller.left
-		anchors.bottom: horiScroller.top
-
-		contentWidth:	theView.width
+		anchors.top:		parent.top
+		anchors.left:		parent.left
+		anchors.right:		vertiScroller.left
+		anchors.bottom:		horiScroller.top
+		
 		contentHeight:	theView.height
+		contentWidth:	theView.width
 
 		DataSetView
 		{
 			z:			-1
 			id:			theView
 			model:		null
-
-			viewportX:	myFlickable.visibleArea.xPosition   * width
-			viewportY:	myFlickable.visibleArea.yPosition   * height
+			
+			/* voor Item
+			x:			-myFlickable.contentX
+			y:			-myFlickable.contentY
+			viewportX:	 myFlickable.contentX
+			viewportY:	 myFlickable.contentY
+			viewportW:	 myFlickable.width	//myFlickable.visibleArea.widthRatio  * width
+			viewportH:	 myFlickable.height	//myFlickable.visibleArea.heightRatio * height
+			*/
+			
+			viewportX:	myFlickable.contentX
+			viewportY:	myFlickable.contentY
 			viewportW:	myFlickable.visibleArea.widthRatio  * width
 			viewportH:	myFlickable.visibleArea.heightRatio * height
+			
+			onSelectionBudgesUp:	__JASPDataViewRoot.budgeUp()
+			onSelectionBudgesDown:	__JASPDataViewRoot.budgeDown()
+			onSelectionBudgesLeft:	__JASPDataViewRoot.budgeLeft()
+			onSelectionBudgesRight:	__JASPDataViewRoot.budgeRight()
 		}
 	}
-
-
+	
+	MouseArea
+	{
+		id:					wheelCatcher
+		anchors.fill:		myFlickable
+		acceptedButtons:	Qt.NoButton 
+		cursorShape:		Qt.PointingHandCursor
+		z:					1000
+		
+	}
+	
 	JASPScrollBar
 	{
 		id:				vertiScroller;

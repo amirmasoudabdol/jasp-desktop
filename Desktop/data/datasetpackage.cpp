@@ -26,6 +26,8 @@
 #include "utilities/appdirs.h"
 #include "utils.h"
 #include "gui/messageforwarder.h"
+#include "utilities/settings.h"
+#include "modules/ribbonmodel.h"
 
 #define ENUM_DECLARATION_CPP
 #include "datasetpackage.h"
@@ -39,11 +41,12 @@ DataSetPackage::DataSetPackage(QObject * parent) : QAbstractItemModel(parent)
 	_singleton = this;
 	//True init is done in setEngineSync!
 
-	connect(this, &DataSetPackage::isModifiedChanged,	this, &DataSetPackage::windowTitleChanged);
-	connect(this, &DataSetPackage::loadedChanged,		this, &DataSetPackage::windowTitleChanged);
-	connect(this, &DataSetPackage::currentFileChanged,	this, &DataSetPackage::windowTitleChanged);
-	connect(this, &DataSetPackage::folderChanged,		this, &DataSetPackage::windowTitleChanged);
-	connect(this, &DataSetPackage::currentFileChanged,	this, &DataSetPackage::nameChanged);
+	connect(this,						&DataSetPackage::isModifiedChanged,		this, &DataSetPackage::windowTitleChanged);
+	connect(this,						&DataSetPackage::loadedChanged,			this, &DataSetPackage::windowTitleChanged);
+	connect(this,						&DataSetPackage::currentFileChanged,	this, &DataSetPackage::windowTitleChanged);
+	connect(this,						&DataSetPackage::folderChanged,			this, &DataSetPackage::windowTitleChanged);
+	connect(this,						&DataSetPackage::currentFileChanged,	this, &DataSetPackage::nameChanged);
+	connect(RibbonModel::singleton(),	&RibbonModel::dataModeChanged,			this, &DataSetPackage::dataModeChanged);
 }
 
 void DataSetPackage::setEngineSync(EngineSync * engineSync)
@@ -52,7 +55,7 @@ void DataSetPackage::setEngineSync(EngineSync * engineSync)
 
 	//These signals should *ONLY* be called from a different thread than _engineSync!
 	connect(this,	&DataSetPackage::pauseEnginesSignal,	_engineSync,	&EngineSync::pauseEngines,		Qt::BlockingQueuedConnection);
-	connect(this,	&DataSetPackage::resumeEnginesSignal,	_engineSync,	&EngineSync::resumeEngines,	Qt::BlockingQueuedConnection);
+	connect(this,	&DataSetPackage::resumeEnginesSignal,	_engineSync,	&EngineSync::resumeEngines,		Qt::BlockingQueuedConnection);
 
 	reset();
 }
@@ -122,6 +125,24 @@ void DataSetPackage::freeDataSet()
 	if(_dataSet)
 		emit freeDatasetSignal(_dataSet);
 	_dataSet = nullptr;
+}
+
+
+void DataSetPackage::generateEmptyData()
+{
+	if(_dataSet || isLoaded())
+	{
+		Log::log() << "void DataSetPackage::generateEmptyData() called but dataset already exists, ignoring it." << std::endl;
+		return;
+	}
+
+	beginLoadingData();
+	createDataSet();
+	setDataSetSize(1, 1);
+	initColumnAsScale(0, "Empty", { NAN });
+	endLoadingData();
+	emit newDataLoaded();
+	resetAllFilters();
 }
 
 QModelIndex DataSetPackage::index(int row, int column, const QModelIndex &parent) const
@@ -254,6 +275,8 @@ QVariant DataSetPackage::data(const QModelIndex &index, int role) const
 		if(_dataSet == nullptr || index.column() >= _dataSet->columnCount() || index.row() >= _dataSet->rowCount())
 			return QVariant(); // if there is no data then it doesn't matter what role we play
 
+	// 	Log::log() << "Data requested for col " << index.column() << " and row " << index.row() << std::endl;
+		
 		switch(role)
 		{
 		case Qt::DisplayRole:
@@ -965,6 +988,35 @@ bool DataSetPackage::initColumnAsNominalOrOrdinal(	QVariant colID, std::string n
 		return initColumnAsNominalOrOrdinal(colID.toString().toStdString(), newName, values, uniqueValues, is_ordinal);
 }
 
+
+void DataSetPackage::initColumnWithStrings(QVariant colId, std::string newName, const std::vector<std::string> &values)
+{
+	// interpret the column as a datatype
+	std::set<int>				uniqueValues;
+	std::vector<int>			intValues;
+	std::vector<double>			doubleValues;
+	std::map<int, std::string>	emptyValuesMap;
+
+	//If less unique integers than the thresholdScale then we think it must be ordinal: https://github.com/jasp-stats/INTERNAL-jasp/issues/270
+	bool	useCustomThreshold	= Settings::value(Settings::USE_CUSTOM_THRESHOLD_SCALE).toBool();
+	size_t	thresholdScale		= (useCustomThreshold ? Settings::value(Settings::THRESHOLD_SCALE) : Settings::defaultValue(Settings::THRESHOLD_SCALE)).toUInt();
+
+	bool valuesAreIntegers		= Utils::convertVecToInt(values, intValues, uniqueValues, emptyValuesMap);
+	
+	size_t minIntForThresh		= thresholdScale > 2 ? 2 : 0;
+
+	auto isNominalInt			= [&](){ return valuesAreIntegers && uniqueValues.size() == minIntForThresh; };
+	auto isOrdinal				= [&](){ return valuesAreIntegers && uniqueValues.size() >  minIntForThresh && uniqueValues.size() <= thresholdScale; };
+	auto isScalar				= [&](){ return Utils::convertVecToDouble(values, doubleValues, emptyValuesMap); };
+
+	if		(isOrdinal())					initColumnAsNominalOrOrdinal(	colId,	newName,	intValues,		true	);
+	else if	(isNominalInt())				initColumnAsNominalOrOrdinal(	colId,	newName,	intValues,		false	);
+	else if	(isScalar())					initColumnAsScale(				colId,	newName,	doubleValues	);
+	else				emptyValuesMap =	initColumnAsNominalText(		colId,	newName,	values			);
+
+	storeInEmptyValues(newName, emptyValuesMap);
+}
+
 void DataSetPackage::enlargeDataSetIfNecessary(std::function<void()> tryThis, const char * callerText)
 {
 	while(true)
@@ -1229,6 +1281,32 @@ std::vector<double> DataSetPackage::getColumnDataDbls(size_t columnIndex)
 	return std::vector<double>(col.AsDoubles.begin(), col.AsDoubles.end());
 }
 
+std::vector<std::string> DataSetPackage::getColumnDataStrings(size_t columnIndex)
+{
+	if(_dataSet == nullptr) return {};
+
+	Column & col = _dataSet->column(columnIndex);
+	
+	std::vector<std::string> out;
+	
+	for(size_t r=0; r<col.rowCount(); r++)
+	{
+		std::string value = col.getOriginalValue(r);
+		if (value != ".")
+		{
+			out.push_back(value);
+			/*if (stringUtils::escapeValue(value))	out << '"' + value + '"';
+			else									out << value;*/
+		}
+		else
+			out.push_back("");
+	}
+	
+	return out;
+}
+
+
+
 void DataSetPackage::setColumnDataInts(size_t columnIndex, std::vector<int> ints)
 {
 	Column & col = _dataSet->column(columnIndex);
@@ -1390,6 +1468,45 @@ void DataSetPackage::columnSetDefaultValues(std::string columnName, columnType c
 	}
 }
 
+void DataSetPackage::pasteSpreadsheet(size_t row, size_t col, const std::vector<std::vector<QString>> & cells)
+{
+	int		rowMax			= ( cells.size() > 0 ? cells[0].size() : 0), 
+			colMax			= cells.size();
+	bool	rowCountChanged = int(row + rowMax) > rowCount()	,
+			colCountChanged = int(col + colMax) > columnCount()	;
+	
+	//beginResetModel();
+	beginSynchingData();
+	
+	if(colCountChanged || rowCountChanged)	
+		setDataSetSize(colMax + col, rowMax + row);
+	
+	std::vector<std::string> changed;
+
+	for(int c=0; c<colMax; c++)
+	{
+		int							dataCol = c +  col;
+		std::vector<std::string>	colVals = getColumnDataStrings(dataCol);	
+		
+		for(int r=0; r<rowMax; r++)
+			colVals[r + row] = fq(cells[c][r]);
+		
+		initColumnWithStrings(dataCol, getColumnName(dataCol), colVals);
+		changed.push_back(getColumnName(dataCol));
+	}
+	
+	
+	std::vector<std::string>				missingColumns;
+	std::map<std::string, std::string>		changeNameColumns;
+	endSynchingData(changed, missingColumns, changeNameColumns, rowCountChanged, colCountChanged);
+	
+	//endResetModel();
+	
+	//emit datasetChanged(tql(changed), {}, {}, rowCountChanged, colCountChanged);
+	
+	if(isLoaded()) setModified(true);
+}
+
 bool DataSetPackage::createColumn(std::string name, columnType columnType)
 {
 	if(getColumnIndex(name) >= 0) return false;
@@ -1482,7 +1599,6 @@ void DataSetPackage::setFolder(QString folder)
 	emit folderChanged();
 }
 
-
 QString DataSetPackage::name() const
 {
 	QFileInfo	file(_currentFile);
@@ -1491,6 +1607,11 @@ QString DataSetPackage::name() const
 		return file.completeBaseName();
 
 	return "JASP";
+}
+
+bool DataSetPackage::dataMode() const
+{
+	return RibbonModel::singleton()->dataMode();
 }
 
 QString DataSetPackage::windowTitle() const
