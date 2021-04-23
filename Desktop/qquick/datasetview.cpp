@@ -435,7 +435,8 @@ void DataSetView::buildNewLinesAndCreateNewItems()
 					down	= (lineFlags & 8) > 0	&& pos1y  > _dataRowsMaxHeight + _viewportY;
 
 #ifdef SHOW_ITEMS_PLEASE
-			createTextItem(row, col);
+			if(!(editing() && row == _prevEditRow && col == _prevEditCol))
+				createTextItem(row, col);
 #endif
 
 
@@ -522,6 +523,9 @@ void DataSetView::buildNewLinesAndCreateNewItems()
 	createleftTopCorner();
 	updateExtraColumnItem();
 
+	if(editing())
+		positionEditItem(_prevEditRow, _prevEditCol);
+
 	JASPTIMER_STOP(buildNewLinesAndCreateNewItems);
 }
 
@@ -540,6 +544,8 @@ QQuickItem * DataSetView::createTextItem(int row, int col)
 		{
 			_itemDelegate = new QQmlComponent(qmlEngine(this));
 			_itemDelegate->setData("import QtQuick 2.9\nText { text: itemText; color: itemActive ? 'black' : 'grey'; verticalAlignment: Text.AlignVCenter; }", QUrl());
+
+			emit itemDelegateChanged();
 		}
 
 		QQuickItem			* textItem	= nullptr;
@@ -653,6 +659,8 @@ QQuickItem * DataSetView::createRowNumber(int row)
 			"Rectangle	{ color: jaspTheme.uiBackground;	anchors.fill: parent }\n"
 			"Text		{ text: rowIndex; anchors.centerIn: parent; color: jaspTheme.textEnabled; }\n"
 		"}", QUrl());
+
+		emit rowNumberDelegateChanged();
 	}
 
 	QQuickItem * rowNumber = nullptr;
@@ -741,6 +749,8 @@ QQuickItem * DataSetView::createColumnHeader(int col)
 			"Rectangle	{ color: jaspTheme.uiBackground;	anchors.fill: parent }\n"
 			"Text		{ text: headerText; anchors.centerIn: parent; color: jaspTheme.textEnabled; }\n"
 		"}", QUrl());
+
+		emit columnHeaderDelegateChanged();
 	}
 
 
@@ -875,19 +885,62 @@ void DataSetView::updateExtraColumnItem()
 
 void DataSetView::positionEditItem(int row, int col)
 {
-	if(!_editItem)
+	if(!_editDelegate)
 	{
-		Log::log() << "positionEditItem called without editItem..." << std::endl;
-		return;
+		_editDelegate = new QQmlComponent(qmlEngine(this));
+
+		_editDelegate->setData(
+"import QtQuick 2.9"																					"\n"
+"TextInput { text: itemText; color: itemActive ? 'black' : 'grey'; verticalAlignment: Text.AlignVCenter; \n"
+" //onActiveFocusChanged: if(!activeFocus) dataview.editFinished(index, text); "									"\n"
+" onEditingFinished:					 dataview.editFinished(index, text); "									"\n"
+"}", QUrl());
+
+		emit editDelegateChanged(_editDelegate);
 	}
-	
-	if(!_editItemContext)
-		_editItemContext = new QQmlContext(qmlContext(this), this);
-		
-	_editItem->cont		
-	
-	
-	setTextItemInfo(row, col, _editItem); //Will set it visible
+
+	QModelIndex		ind			( _model->index(row, col));
+	bool			active		= _model->data(ind, _roleNameToRole["filter"]).toBool();
+
+	if(_editItemContextual && !(_prevEditRow == row && _prevEditCol == col)) //remove previous edit item to avoid old values or broken bindings messing everything up. But only if it is in a different place than where we're at
+	{
+		_editItemContextual->item		->setVisible(false);
+		_editItemContextual->item		->deleteLater();
+		_editItemContextual->item		= nullptr;
+		_editItemContextual->context	->deleteLater();
+		_editItemContextual->context	= nullptr;
+		_editItemContextual				= nullptr;
+
+		createTextItem(_prevEditRow, _prevEditCol);
+	}
+
+
+	if(!_editItemContextual)
+	{
+		_editItemContextual = new ItemContextualized(setStyleDataItem(nullptr, active, col, row));
+
+		forceActiveFocus();
+
+		//Remove item here
+		storeTextItem(row, col, true);
+		_prevEditRow = row; //Store info to recreate it later
+		_prevEditCol = col;
+
+		QQmlIncubator localIncubator(QQmlIncubator::Synchronous);
+		_editDelegate->create(localIncubator, _editItemContextual->context);
+
+		if(localIncubator.isError())
+			throw std::runtime_error("Something went wrong incubating an edit item delegate for tableview!");
+
+		_editItemContextual->item = qobject_cast<QQuickItem*>(localIncubator.object());;
+
+		_editItemContextual->item->setParent(this);
+		_editItemContextual->item->setParentItem(this);
+	}
+	else
+		setStyleDataItem(_editItemContextual->context, active, col, row);
+
+	setTextItemInfo(row, col, _editItemContextual->item); //Will set it visible
 }
 
 void DataSetView::setExtraColumnX()
@@ -1037,13 +1090,13 @@ void DataSetView::paste()
 	}
 }
 
-void DataSetView::setEditDelegate(QQuickItem *editItem)
+void DataSetView::setEditDelegate(QQmlComponent *editDelegate)
 {
-	if (_editItem == editItem)
+	if (_editDelegate == editDelegate)
 		return;
 	
-	_editItem = editItem;
-	emit editDelegateChanged(_editItem);
+	_editDelegate = editDelegate;
+	emit editDelegateChanged(_editDelegate);
 }
 
 
@@ -1066,14 +1119,10 @@ void DataSetView::edit(QModelIndex here)
 	if(!here.isValid())
 		return;
 	
-	//First I need to remove the textitem at here
-	storeTextItem(here.row(), here.column(), true);
-	
-	//Then recontextualize editItem and place it at here
-	positionEditItem(here.row(), here.column());
-	
 	//Turn editing on
 	setEditing(true);
+
+	positionEditItem(here.row(), here.column());
 	
 	//when editItem is done or loses focus and the contents changed, this calls back to editFinished which will use setData etc
 	//this will also turn editing off again and replace editItem by normal item
@@ -1088,10 +1137,8 @@ void DataSetView::editFinished(QModelIndex here, QVariant editedValue)
 	}
 	
 	setEditing(false);
-	_editItem->setVisible(false);
-	
+
 	_model->setData(here, editedValue);
-	
 	createTextItem(here.row(), here.column());
 }
 
@@ -1123,6 +1170,7 @@ QQmlContext * DataSetView::setStyleDataItem(QQmlContext * previousContext, bool 
 	previousContext->setContextProperty("index",			idx);
 	previousContext->setContextProperty("isDynamic",		true);
 	previousContext->setContextProperty("tableView",		_tableViewItem);
+	previousContext->setContextProperty("dataviewer",		this);
 
 	return previousContext;
 }

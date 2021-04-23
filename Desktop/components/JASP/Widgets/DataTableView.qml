@@ -39,21 +39,32 @@ FocusScope
 			//doubleClickWorkaround:	!ribbonModel.dataMode
 			//flickableInteractive:	!ribbonModel.dataMode
 			
-			editItem:
+			editDelegate:
 				TextInput
 				{
+					focus:					true
 					text:					itemText
 					color:					itemActive ? jaspTheme.textEnabled : jaspTheme.textDisabled
 					font:					jaspTheme.font
 					verticalAlignment:		Text.AlignVCenter
-					onEditingFinished:							doneEditing();
-					onActiveFocusChanged:	if(!activeFocus)	doneEditing();
+
+					//onEditingFinished:							dataTableView.view.editFinished(index, text);
+					onActiveFocusChanged:	if(!activeFocus)	dataTableView.view.editFinished(index, text);
 					
-					function doneEditing()
+					Rectangle
 					{
-						dataTableView.view.editFinished(index, text);
-						text = Qt.binding(function(){ return itemText }); //make sure it works again in the future
+					color:	"yellow"
+					z:		-1
+					anchors
+					{
+						fill:			 parent
+						topMargin:		-dataTableView.itemVerticalPadding
+						leftMargin:		-dataTableView.itemHorizontalPadding
+						rightMargin:	-dataTableView.itemHorizontalPadding
+						bottomMargin:	-dataTableView.itemVerticalPadding
 					}
+					}
+
 				}
 
 			itemDelegate:

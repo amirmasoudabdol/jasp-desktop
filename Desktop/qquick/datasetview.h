@@ -128,7 +128,7 @@ signals:
 	void		itemDelegateChanged();
 	void		leftTopCornerItemChanged();
 	void		extraColumnItemChanged();
-	void		editDelegateChanged(QQuickItem * editItem);
+	void		editDelegateChanged(QQmlComponent * editDelegate);
 
 	void		itemSizeChanged();
 
@@ -223,14 +223,14 @@ protected:
 	std::vector<float>										_lines;
 	QQuickItem											*	_leftTopItem			= nullptr,
 														*	_extraColumnItem		= nullptr,
-														*	_tableViewItem			= nullptr,
-														*	_editItem				= nullptr;
+														*	_tableViewItem			= nullptr;
 	QQmlComponent										*	_itemDelegate			= nullptr,
 														*	_rowNumberDelegate		= nullptr,
 														*	_columnHeaderDelegate	= nullptr,
 														*	_leftTopCornerDelegate	= nullptr,
-														*	_styleDataCreator		= nullptr;
-	QQmlContext											*	_editItemContext		= nullptr;
+														*	_styleDataCreator		= nullptr,
+														*	_editDelegate			= nullptr;
+	ItemContextualized									*	_editItemContextual		= nullptr;
 	QSGFlatColorMaterial									_material;
 	std::map<std::string, int>								_roleNameToRole;
 	std::map<size_t, std::map<size_t, unsigned char>>		_storedLineFlags;
@@ -259,7 +259,9 @@ protected:
 				_currentViewportColMin	= -1,
 				_currentViewportColMax	= -1,
 				_currentViewportRowMin	= -1,
-				_currentViewportRowMax	= -1;
+				_currentViewportRowMax	= -1,
+				_prevEditRow			= -1,
+				_prevEditCol			= -1;
 	size_t		_linesActualSize		= 0;
 	long		_selectScrollMs			= 0;
 	QModelIndex _selectionStart,

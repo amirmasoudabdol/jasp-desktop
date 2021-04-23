@@ -386,8 +386,8 @@ bool DataSetPackage::setData(const QModelIndex &index, const QVariant &value, in
 			return false;
 
 	case parIdxType::data:
-		Log::log() << "setData for data is not supported!" << std::endl;
-		return false;
+		pasteSpreadsheet(index.row(), index.column(), {{value.toString()}});
+		return true;
 
 	case parIdxType::label:
 	{
