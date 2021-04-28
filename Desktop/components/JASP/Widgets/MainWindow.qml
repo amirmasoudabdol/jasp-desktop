@@ -96,8 +96,6 @@ Window
 		Shortcut { onActivated: fileMenuModel.close();							sequences: ["Ctrl+W"];											}
 		Shortcut { onActivated: mainWindowRoot.toggleFullScreen();				sequences: ["Ctrl+M", Qt.Key_F11];								}
 		Shortcut { onActivated: mainWindowRoot.changeFocusToFileMenu();			sequences: ["Home",   Qt.Key_Home, Qt.Key_Menu];				}
-		Shortcut { onActivated: mainWindow.setLanguage(0);						sequences: ["Ctrl+1"];											}
-		Shortcut { onActivated: mainWindow.setLanguage(1);						sequences: ["Ctrl+2"];											}
 
 		RibbonBar
 		{
