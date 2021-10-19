@@ -1103,7 +1103,7 @@ QSGNode * DataSetView::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
 		
 		QSGGeometry *geometry = new QSGGeometry(QSGGeometry::defaultAttributes_Point2D(), geomSize);
 		geometry->setLineWidth(1);
-		geometry->setDrawingMode(GL_LINES);
+        geometry->setDrawingMode(QSGGeometry::DrawLines);
 
 		float * vertexData = static_cast<float*>(geometry->vertexData());
 
