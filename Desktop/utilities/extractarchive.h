@@ -5,8 +5,8 @@
 #include <map>
 #include <string>
 #include <functional>
-#include "libzip/archive.h"
-#include "libzip/archive_entry.h"
+#include "archive.h"
+#include "archive_entry.h"
 
 class ExtractArchive
 {
