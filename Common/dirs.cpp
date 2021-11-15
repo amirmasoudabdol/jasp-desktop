@@ -275,19 +275,6 @@ string Dirs::exeDir()
 
 }
 
-string Dirs::rHomeDir()
-{
-	string dir = exeDir();
-
-#ifdef __APPLE__
-    dir += "../Frameworks/R.framework/Versions/" + AppInfo::getRVersion() + "/Resources";
-#else
-	dir += "/R";
-#endif
-
-	return dir;
-}
-
 string Dirs::resourcesDir()
 {
 	static string dir;
