@@ -2,9 +2,9 @@ list(APPEND CMAKE_MESSAGE_CONTEXT Desktop)
 
 set(CMAKE_BUILD_WITH_INSTALL_RPATH YES)
 
-find_package(LibArchive REQUIRED)
-find_package(ZLIB REQUIRED)
-find_package(Iconv REQUIRED)
+# find_package(LibArchive REQUIRED)
+# find_package(ZLIB REQUIRED)
+# find_package(Iconv REQUIRED)
 
 # find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)
 
@@ -36,41 +36,41 @@ find_package(
              QuickWidgets
              Core5Compat)
 
-if(NOT INSTALL_JASP_REQUIRED_LIBRARIES)
+# if(NOT INSTALL_JASP_REQUIRED_LIBRARIES)
 
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(
-    LIBJSONCPP
-    REQUIRED
-    IMPORTED_TARGET
-    jsoncpp)
+# find_package(PkgConfig REQUIRED)
+# pkg_check_modules(
+#   LIBJSONCPP
+#   REQUIRED
+#   IMPORTED_TARGET
+#   jsoncpp)
 
-  pkg_check_modules(
-    LIBREADSTAT
-    REQUIRED
-    IMPORTED_TARGET
-    readstat)
+# pkg_check_modules(
+#   LIBREADSTAT
+#   REQUIRED
+#   IMPORTED_TARGET
+#   readstat)
 
-else()
+# else()
 
-  # find_library(
-  #   LIBJSONCPP REQUIRED
-  #   NAMES jsoncpp
-  #   HINTS ${jsoncpp_LIBRARY_DIRS})
+#   # find_library(
+#   #   LIBJSONCPP REQUIRED
+#   #   NAMES jsoncpp
+#   #   HINTS ${jsoncpp_LIBRARY_DIRS})
 
-  # WARNING: This is not the way to do it, and it does not work with Ninja :\
+#   # WARNING: This is not the way to do it, and it does not work with Ninja :\
 
-  # jsoncpp
-  set(LIBJSONCPP_INCLUDE_DIRS ${jsoncpp_INCLUDE_DIRS})
-  set(LIBJSONCPP_LIBRARY_DIRS ${jsoncpp_LIBRARY_DIRS})
-  set(LIBJSONCPP_LINK_LIBRARIES ${jsoncpp_LIBRARY_DIRS}/libjsoncpp.a)
+#   # jsoncpp
+#   set(LIBJSONCPP_INCLUDE_DIRS ${jsoncpp_INCLUDE_DIRS})
+#   set(LIBJSONCPP_LIBRARY_DIRS ${jsoncpp_LIBRARY_DIRS})
+#   set(LIBJSONCPP_LINK_LIBRARIES ${jsoncpp_LIBRARY_DIRS}/libjsoncpp.a)
 
-  # readstat
-  set(LIBREADSTAT_INCLUDE_DIRS ${readstat_INCLUDE_DIRS})
-  set(LIBREADSTAT_LIBRARY_DIRS ${readstat_LIBRARY_DIRS})
-  set(LIBREADSTAT_LINK_LIBRARIES ${LIBREADSTAT_LIBRARY_DIRS}/libreadstat.a)
+# readstat
+set(LIBREADSTAT_INCLUDE_DIRS ${readstat_INCLUDE_DIRS})
+set(LIBREADSTAT_LIBRARY_DIRS ${readstat_LIBRARY_DIRS})
+set(LIBREADSTAT_LINK_LIBRARIES ${LIBREADSTAT_LIBRARY_DIRS}/libreadstat.a)
 
-endif()
+# endif()
 
 # TODO:
 #
@@ -78,7 +78,7 @@ endif()
 #       most variable, but for now, I keep it like this. When we are
 #       sure that things are working, we can just drop the `.template`
 set(MACOSX_ICON_PATH ${CMAKE_SOURCE_DIR}/Tools/macOS/icon.icns)
-configure_file(${CMAKE_SOURCE_DIR}/Tools/macOS/Info.plist.template
+configure_file(${CMAKE_SOURCE_DIR}/Tools/macOS/Info.plist.in
                ${CMAKE_CURRENT_BINARY_DIR}/Info.plist)
 
 # We can technically use these two lines to grab all *.h, and *.cpp files
@@ -169,9 +169,9 @@ if(INSTALL_R_MODULES)
   add_dependencies(JASP Modules)
 endif()
 
-if(INSTALL_JASP_REQUIRED_LIBRARIES)
-  add_dependencies(JASP readstat-install)
-endif()
+# if(INSTALL_JASP_REQUIRED_LIBRARIES)
+add_dependencies(JASP readstat-install)
+# endif()
 
 target_include_directories(
   JASP
@@ -205,11 +205,13 @@ if(APPLE)
       Qt::Core5Compat
       # OpenSSL::SSL
       # OpenSSL::Crypto
+      # System
+      CONAN_PKG::libiconv
+      CONAN_PKG::zlib
+      CONAN_PKG::openssl
       # Based on our config, this is either from PkgConfig, or the build/_deps/
       ${LIBREADSTAT_LINK_LIBRARIES}
-      # System
-      ${Iconv_LIBRARIES}
-      ${ZLIB_LIBRARIES} # Needed for libreadstat.a
+      # ${ZLIB_LIBRARIES} # Needed for libreadstat.a
     PRIVATE ${_R_Framework})
 
   # R.framework linkage ----------

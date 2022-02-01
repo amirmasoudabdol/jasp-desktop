@@ -33,7 +33,7 @@
 
 # Adding caching for CPM, this is going to be useful later that we
 # want to have CI builds on GitHub, see here: https://github.com/cpm-cmake/CPM.cmake/wiki/Caching-with-CPM.cmake-and-ccache-on-GitHub-Actions
-set(CPM_SOURCE_CACHE ${PROJECT_SOURCE_DIR}/.cache/CPM)
+# set(CPM_SOURCE_CACHE ${PROJECT_SOURCE_DIR}/.cache/CPM)
 
 add_custom_target(Dependencies)
 
@@ -87,66 +87,66 @@ else()
 
 endif()
 
-set(CPM_USE_LOCAL_PACKAGES ON)
+# set(CPM_USE_LOCAL_PACKAGES ON)
 
 # This is rather slow because it has to download all the submodules,
 # when the final version of 1.78.0 is released, we can replace it
 # with the .tar.gz to have a faster download.
 #   - For some reason, the .tar.gz doesn't support CMake!
 #   - It's not necessary to pass a list of targets. CMake only builds want it needs
-cpmaddpackage(
-  NAME
-  Boost
-  VERSION
-  1.78.0
-  OPTIONS
-  "BUILD_TESTING:BOOL=OFF"
-  "CMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
-  "BOOST_INCLUDE_LIBRARIES:STRING=nowide\\\\;filesystem\\\\;system\\\\;date_time\\\\;timer\\\\;chrono\\\\;atomic"
-  GITHUB_REPOSITORY
-  "boostorg/boost"
-  GIT_TAG
-  "boost-1.78.0")
+# cpmaddpackage(
+#   NAME
+#   Boost
+#   VERSION
+#   1.78.0
+#   OPTIONS
+#   "BUILD_TESTING:BOOL=OFF"
+#   "CMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
+#   "BOOST_INCLUDE_LIBRARIES:STRING=nowide\\\\;filesystem\\\\;system\\\\;date_time\\\\;timer\\\\;chrono\\\\;atomic"
+#   GITHUB_REPOSITORY
+#   "boostorg/boost"
+#   GIT_TAG
+#   "boost-1.78.0")
 
-#
-# Removing these, since they are part of the Xcode and MSVC's toolchain
-#
-if(WIN32)
+# #
+# # Removing these, since they are part of the Xcode and MSVC's toolchain
+# #
+# if(WIN32)
 
-  cpmaddpackage(
-    NAME
-    LibArchive
-    VERSION
-    3.5.2
-    OPTIONS
-    "ENABLE_TEST OFF"
-    "JSONCPP_WITH_POST_BUILD_UNITTEST OFF"
-    GITHUB_REPOSITORY
-    "libarchive/libarchive"
-    GIT_TAG
-    "v3.5.2")
+#   cpmaddpackage(
+#     NAME
+#     LibArchive
+#     VERSION
+#     3.5.2
+#     OPTIONS
+#     "ENABLE_TEST OFF"
+#     "JSONCPP_WITH_POST_BUILD_UNITTEST OFF"
+#     GITHUB_REPOSITORY
+#     "libarchive/libarchive"
+#     GIT_TAG
+#     "v3.5.2")
 
-  cpmaddpackage(
-    NAME
-    ZLIB
-    VERSION
-    1.2.11
-    GITHUB_REPOSITORY
-    "madler/zlib"
-    GIT_TAG
-    "v1.2.11")
+#   cpmaddpackage(
+#     NAME
+#     ZLIB
+#     VERSION
+#     1.2.11
+#     GITHUB_REPOSITORY
+#     "madler/zlib"
+#     GIT_TAG
+#     "v1.2.11")
 
-  cpmaddpackage(
-    NAME
-    ZSTD
-    VERSION
-    1.5.2
-    GITHUB_REPOSITORY
-    "facebook/zstd"
-    GIT_TAG
-    "v1.5.2")
+#   cpmaddpackage(
+#     NAME
+#     ZSTD
+#     VERSION
+#     1.5.2
+#     GITHUB_REPOSITORY
+#     "facebook/zstd"
+#     GIT_TAG
+#     "v1.5.2")
 
-endif()
+# endif()
 
 # ----- jsoncpp ------
 #
@@ -176,27 +176,27 @@ endif()
 # everything else, but I am observing this until I make sure that
 # it works.
 #
-externalproject_add(
-  jsoncpp
-  PREFIX _deps/jsoncpp
-  # LOG_CONFIGURE ON
-  # LOG_BUILD ON
-  # LOG_INSTALL ON
-  # LOG_OUTPUT_ON_FAILURE ON
-  GIT_REPOSITORY "https://github.com/open-source-parsers/jsoncpp.git"
-  GIT_TAG "1.9.5"
-  STEP_TARGETS configure build install
-  CMAKE_ARGS -DJSONCPP_WITH_TESTS=OFF
-             -DJSONCPP_WITH_POST_BUILD_UNITTEST=OFF
-             -DJSONCPP_WITH_CMAKE_PACKAGE=OFF
-             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-             -DCMAKE_INSTALL_PREFIX=<DOWNLOAD_DIR>/jsoncpp-install
-             -DCMAKE_BINARY_DIR=<DOWNLOAD_DIR>/jsoncpp-install)
+# externalproject_add(
+#   jsoncpp
+#   PREFIX _deps/jsoncpp
+#   # LOG_CONFIGURE ON
+#   # LOG_BUILD ON
+#   # LOG_INSTALL ON
+#   # LOG_OUTPUT_ON_FAILURE ON
+#   GIT_REPOSITORY "https://github.com/open-source-parsers/jsoncpp.git"
+#   GIT_TAG "1.9.5"
+#   STEP_TARGETS configure build install
+#   CMAKE_ARGS -DJSONCPP_WITH_TESTS=OFF
+#              -DJSONCPP_WITH_POST_BUILD_UNITTEST=OFF
+#              -DJSONCPP_WITH_CMAKE_PACKAGE=OFF
+#              -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+#              -DCMAKE_INSTALL_PREFIX=<DOWNLOAD_DIR>/jsoncpp-install
+#              -DCMAKE_BINARY_DIR=<DOWNLOAD_DIR>/jsoncpp-install)
 
-externalproject_get_property(jsoncpp DOWNLOAD_DIR)
-set(jsoncpp_DOWNLOAD_DIR ${DOWNLOAD_DIR})
-set(jsoncpp_INCLUDE_DIRS ${jsoncpp_DOWNLOAD_DIR}/jsoncpp-install/include)
-set(jsoncpp_LIBRARY_DIRS ${jsoncpp_DOWNLOAD_DIR}/jsoncpp-install/lib)
+# externalproject_get_property(jsoncpp DOWNLOAD_DIR)
+# set(jsoncpp_DOWNLOAD_DIR ${DOWNLOAD_DIR})
+# set(jsoncpp_INCLUDE_DIRS ${jsoncpp_DOWNLOAD_DIR}/jsoncpp-install/include)
+# set(jsoncpp_LIBRARY_DIRS ${jsoncpp_DOWNLOAD_DIR}/jsoncpp-install/lib)
 
 # ----- readstat -----
 

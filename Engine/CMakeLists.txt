@@ -1,6 +1,7 @@
 list(APPEND CMAKE_MESSAGE_CONTEXT Engine)
 
-find_package(LibArchive REQUIRED)
+# find_package(libarchive REQUIRED)
+# find_package(jsoncpp REQUIRED)
 
 set(Boost_USE_STATIC_LIBS ON)
 find_package(
@@ -12,29 +13,29 @@ find_package(
              timer
              chrono)
 
-if(NOT INSTALL_JASP_REQUIRED_LIBRARIES)
+# if(NOT INSTALL_JASP_REQUIRED_LIBRARIES)
 
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(
-    LIBJSONCPP
-    REQUIRED
-    IMPORTED_TARGET
-    jsoncpp)
+# find_package(PkgConfig REQUIRED)
+# pkg_check_modules(
+#   LIBJSONCPP
+#   REQUIRED
+#   IMPORTED_TARGET
+#   jsoncpp)
 
-else()
+# else()
 
-  # find_library(
-  #   LIBJSONCPP REQUIRED
-  #   NAMES jsoncpp
-  #   HINTS ${jsoncpp_LIBRARY_DIRS})
+#   # find_library(
+#   #   LIBJSONCPP REQUIRED
+#   #   NAMES jsoncpp
+#   #   HINTS ${jsoncpp_LIBRARY_DIRS})
 
-  # WARNING: This is not the way to do it, and it does not work with Ninja :\
+#   # WARNING: This is not the way to do it, and it does not work with Ninja :\
 
-  set(LIBJSONCPP_INCLUDE_DIRS ${jsoncpp_INCLUDE_DIRS})
-  set(LIBJSONCPP_LIBRARY_DIRS ${jsoncpp_LIBRARY_DIRS})
-  set(LIBJSONCPP_LINK_LIBRARIES ${jsoncpp_LIBRARY_DIRS}/libjsoncpp.a)
+#   set(LIBJSONCPP_INCLUDE_DIRS ${jsoncpp_INCLUDE_DIRS})
+#   set(LIBJSONCPP_LIBRARY_DIRS ${jsoncpp_LIBRARY_DIRS})
+#   set(LIBJSONCPP_LINK_LIBRARIES ${jsoncpp_LIBRARY_DIRS}/libjsoncpp.a)
 
-endif()
+# endif()
 
 file(GLOB_RECURSE HEADER_FILES "${CMAKE_CURRENT_LIST_DIR}/*.h")
 
@@ -44,12 +45,12 @@ add_executable(JASPEngine ${HEADER_FILES} ${SOURCE_FILES})
 
 add_dependencies(JASPEngine R-Interface)
 
-target_include_directories(JASPEngine PUBLIC ${LIBJSONCPP_INCLUDE_DIRS}
+target_include_directories(JASPEngine PUBLIC ${CONAN_INCLUDE_DIRS_jsoncpp}
                                              ${PROJECT_SOURCE_DIR}/R-Interface)
 
 target_link_libraries(
   JASPEngine
-  PUBLIC Common
+  PUBLIC Common # includes jsoncpp, libarchive
          R-Interface
          #
          Boost::nowide
@@ -57,9 +58,7 @@ target_link_libraries(
          Boost::system
          Boost::date_time
          Boost::timer
-         Boost::chrono
-         # System
-         LibArchive::LibArchive)
+         Boost::chrono)
 
 if(IWYU_EXECUTABLE AND RUN_IWYU)
   set_target_properties(JASPEngine PROPERTIES CXX_INCLUDE_WHAT_YOU_USE

@@ -1,6 +1,6 @@
 list(APPEND CMAKE_MESSAGE_CONTEXT Common)
 
-find_package(LibArchive REQUIRED)
+# find_package(LibArchive REQUIRED)
 
 set(Boost_USE_STATIC_LIBS ON)
 find_package(
@@ -12,29 +12,32 @@ find_package(
              timer
              chrono)
 
-if(NOT INSTALL_JASP_REQUIRED_LIBRARIES)
+# if(NOT INSTALL_JASP_REQUIRED_LIBRARIES)
 
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(
-    LIBJSONCPP
-    REQUIRED
-    IMPORTED_TARGET
-    jsoncpp)
+# find_package(PkgConfig REQUIRED)
+# pkg_check_modules(
+#   LIBJSONCPP
+#   REQUIRED
+#   IMPORTED_TARGET
+#   jsoncpp)
 
-else()
+# else()
 
-  # find_library(
-  #   LIBJSONCPP REQUIRED
-  #   NAMES jsoncpp
-  #   HINTS ${jsoncpp_LIBRARY_DIRS})
+#   # find_library(
+#   #   LIBJSONCPP REQUIRED
+#   #   NAMES jsoncpp
+#   #   HINTS ${jsoncpp_LIBRARY_DIRS})
 
-  # WARNING: This is not the way to do it, and it does not work with Ninja :\
+#   # WARNING: This is not the way to do it, and it does not work with Ninja :\
 
-  set(LIBJSONCPP_INCLUDE_DIRS ${jsoncpp_INCLUDE_DIRS})
-  set(LIBJSONCPP_LIBRARY_DIRS ${jsoncpp_LIBRARY_DIRS})
-  set(LIBJSONCPP_LINK_LIBRARIES ${jsoncpp_LIBRARY_DIRS}/libjsoncpp.a)
+#   set(LIBJSONCPP_INCLUDE_DIRS ${jsoncpp_INCLUDE_DIRS})
+#   set(LIBJSONCPP_LIBRARY_DIRS ${jsoncpp_LIBRARY_DIRS})
+#   set(LIBJSONCPP_LINK_LIBRARIES ${jsoncpp_LIBRARY_DIRS}/libjsoncpp.a)
 
-endif()
+# endif()
+
+# message(WARNING ${CONAN_INCLUDE_DIRS_libjson})
+# message(WARNING ${CONAN_LIBS_libjson})
 
 configure_file(appinfo.cpp.in appinfo.cpp)
 message(STATUS "appinfo.cpp is successfully generated...")
@@ -50,13 +53,14 @@ list(APPEND SOURCE_FILES ${CMAKE_CURRENT_BINARY_DIR}/appinfo.cpp)
 # from it.
 add_library(Common ${HEADER_FILES} ${SOURCE_FILES})
 
-if(INSTALL_JASP_REQUIRED_LIBRARIES)
-  add_dependencies(Common jsoncpp-install)
-endif()
+# if(INSTALL_JASP_REQUIRED_LIBRARIES)
+#   add_dependencies(Common jsoncpp-install)
+# endif()
 
 target_include_directories(
   Common
-  PUBLIC ${LIBJSONCPP_INCLUDE_DIRS}
+  PUBLIC #${LIBJSONCPP_INCLUDE_DIRS}
+         ${CONAN_INCLUDE_DIRS_libjson}
          # JASP
          jaspColumnEncoder
          # R
@@ -71,8 +75,12 @@ target_link_libraries(
          Boost::date_time
          Boost::timer
          Boost::chrono
-         LibArchive::LibArchive
-         ${LIBJSONCPP_LINK_LIBRARIES}
+         # LibArchive::LibArchive
+         # ${LIBJSONCPP_LINK_LIBRARIES}
+         # ${CONAN_LIBS_libarchive}
+         # ${CONAN_LIBS_jsoncpp}
+         CONAN_PKG::jsoncpp
+         CONAN_PKG::libarchive
          # Only if JASP_USES_QT_HERE is ON
          $<$<BOOL:${JASP_USES_QT_HERE}>:Qt::Core>)
 

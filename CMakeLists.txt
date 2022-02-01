@@ -9,6 +9,9 @@ project(
   HOMEPAGE_URL "http://jasp-stats.org/"
   DESCRIPTION "A fresh way to do statistics")
 
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup(TARGETS)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -66,7 +69,7 @@ option(GIT_SUBMODULE "Check submodules during build" ON)
 option(
   INSTALL_JASP_REQUIRED_LIBRARIES
   "Indicates whether CMake should take care of the dependencies like 'Boost', 'jsoncpp', etc."
-  ON)
+  OFF)
 option(BUILD_TESTS "Whether to build the test suits" OFF)
 
 if(CCACHE_EXECUTABLE
@@ -120,9 +123,9 @@ include(JASP.cmake)
 include(R.cmake)
 
 # Builds and configures all the dependencies
-if(INSTALL_JASP_REQUIRED_LIBRARIES)
-  include(Dependencies.cmake)
-endif()
+# if(INSTALL_JASP_REQUIRED_LIBRARIES)
+include(Dependencies.cmake)
+# endif()
 
 add_subdirectory(Common)
 add_subdirectory(R-Interface)
