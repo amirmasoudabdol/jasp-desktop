@@ -174,12 +174,8 @@ add_dependencies(JASP readstat-install)
 # endif()
 
 target_include_directories(
-  JASP
-  PUBLIC ${LIBJSONCPP_INCLUDE_DIRS}
-         ${LibArchive_INCLUDE_DIRS}
-         ${LIBREADSTAT_INCLUDE_DIRS}
-         ${PROJECT_SOURCE_DIR}/Common
-         ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder)
+  JASP PUBLIC ${LIBREADSTAT_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/Common
+              ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder)
 
 if(APPLE)
 
@@ -203,15 +199,13 @@ if(APPLE)
       Qt::QuickControls2
       Qt::QuickWidgets
       Qt::Core5Compat
-      # OpenSSL::SSL
-      # OpenSSL::Crypto
-      # System
-      CONAN_PKG::libiconv
-      CONAN_PKG::zlib
+      # Conan
       CONAN_PKG::openssl
+      CONAN_PKG::jsoncpp
+      CONAN_PKG::zlib
       # Based on our config, this is either from PkgConfig, or the build/_deps/
       ${LIBREADSTAT_LINK_LIBRARIES}
-      # ${ZLIB_LIBRARIES} # Needed for libreadstat.a
+      ${CONAN_LIBS_LIBICONV}
     PRIVATE ${_R_Framework})
 
   # R.framework linkage ----------
