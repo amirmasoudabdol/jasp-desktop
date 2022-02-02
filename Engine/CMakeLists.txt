@@ -43,11 +43,15 @@ file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/*.cpp")
 
 add_executable(JASPEngine ${HEADER_FILES} ${SOURCE_FILES})
 
-add_dependencies(JASPEngine R-Interface)
+if (NOT WIN32)
+  add_dependencies(JASPEngine R-Interface)
+endif()
 
 target_include_directories(JASPEngine PUBLIC ${CONAN_INCLUDE_DIRS_JSONCPP}
-                                             ${PROJECT_SOURCE_DIR}/R-Interface)
+                                             ${PROJECT_SOURCE_DIR}/R-Interface
+                                             ${PROJECT_SOURCE_DIR}/Common)
 
+if (NOT WIN32)
 target_link_libraries(
   JASPEngine
   PUBLIC Common # includes jsoncpp, libarchive
@@ -59,6 +63,18 @@ target_link_libraries(
          Boost::date_time
          Boost::timer
          Boost::chrono)
+else()
+  target_link_libraries(
+  JASPEngine
+  PUBLIC Common # includes jsoncpp, libarchive
+         #
+         Boost::nowide
+         Boost::filesystem
+         Boost::system
+         Boost::date_time
+         Boost::timer
+         Boost::chrono)
+endif()
 
 if(IWYU_EXECUTABLE AND RUN_IWYU)
   set_target_properties(JASPEngine PROPERTIES CXX_INCLUDE_WHAT_YOU_USE

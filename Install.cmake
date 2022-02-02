@@ -22,7 +22,7 @@ include(InstallRequiredSystemLibraries)
 # different systems.
 # - [ ] We can make it more granular on Windows and Linux later.
 install(
-  TARGETS JASP R-Interface Common
+  TARGETS JASP Common
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
