@@ -170,7 +170,7 @@ if(INSTALL_R_MODULES)
 endif()
 
 # if(INSTALL_JASP_REQUIRED_LIBRARIES)
-add_dependencies(JASP readstat-install)
+# add_dependencies(JASP readstat-install)
 # endif()
 
 target_include_directories(

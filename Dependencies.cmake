@@ -40,9 +40,9 @@ list(APPEND CMAKE_MESSAGE_CONTEXT Dependencies)
 add_custom_target(Dependencies)
 
 # The rest of dependencies are automatically being handled by the CPM
-if(INSTALL_JASP_REQUIRED_LIBRARIES)
-  add_dependencies(Dependencies readstat-install)
-endif()
+# if(INSTALL_JASP_REQUIRED_LIBRARIES)
+#   add_dependencies(Dependencies readstat-install)
+# endif()
 
 # Here,we download the R binary, extract its content and copy it into the
 # right place.
@@ -76,7 +76,7 @@ cpmaddpackage(
   OPTIONS
   "BUILD_TESTING:BOOL=OFF"
   "CMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
-  "BOOST_INCLUDE_LIBRARIES:STRING=nowide\\\\;filesystem\\\\;system\\\\;date_time\\\\;timer\\\\;chrono\\\\;atomic"
+  # "BOOST_INCLUDE_LIBRARIES:STRING=nowide\\\\;filesystem\\\\;system\\\\;date_time\\\\;timer\\\\;chrono\\\\;atomic"
   GITHUB_REPOSITORY
   "boostorg/boost"
   GIT_TAG
@@ -174,27 +174,27 @@ cpmaddpackage(
 
 # ----- readstat -----
 
-externalproject_add(
-  readstat
-  PREFIX _deps/readstat
-  # LOG_CONFIGURE ON
-  # LOG_BUILD ON
-  # LOG_INSTALL ON
-  # LOG_OUTPUT_ON_FAILURE ON
-  GIT_REPOSITORY "https://github.com/WizardMac/ReadStat"
-  GIT_TAG "v1.1.7"
-  BUILD_IN_SOURCE ON
-  STEP_TARGETS configure build install
-  CONFIGURE_COMMAND ./autogen.sh
-  COMMAND ${AUTOUPDATE}
-  COMMAND ./configure --enable-static --prefix=<DOWNLOAD_DIR>/readstat-install
-  BUILD_COMMAND ${MAKE}
-  INSTALL_COMMAND ${MAKE} install)
+# externalproject_add(
+#   readstat
+#   PREFIX _deps/readstat
+#   # LOG_CONFIGURE ON
+#   # LOG_BUILD ON
+#   # LOG_INSTALL ON
+#   # LOG_OUTPUT_ON_FAILURE ON
+#   GIT_REPOSITORY "https://github.com/WizardMac/ReadStat"
+#   GIT_TAG "v1.1.7"
+#   BUILD_IN_SOURCE ON
+#   STEP_TARGETS configure build install
+#   CONFIGURE_COMMAND ./autogen.sh
+#   COMMAND ${AUTOUPDATE}
+#   COMMAND ./configure --enable-static --prefix=<DOWNLOAD_DIR>/readstat-install
+#   BUILD_COMMAND ${MAKE}
+#   INSTALL_COMMAND ${MAKE} install)
 
-externalproject_get_property(readstat DOWNLOAD_DIR)
-set(readstat_DOWNLOAD_DIR ${DOWNLOAD_DIR})
-set(readstat_BUILD_DIR ${readstat_DOWNLOAD_DIR}/readstat-build)
-set(readstat_INCLUDE_DIRS ${readstat_DOWNLOAD_DIR}/readstat-install/include)
-set(readstat_LIBRARY_DIRS ${readstat_DOWNLOAD_DIR}/readstat-install/lib)
+# externalproject_get_property(readstat DOWNLOAD_DIR)
+# set(readstat_DOWNLOAD_DIR ${DOWNLOAD_DIR})
+# set(readstat_BUILD_DIR ${readstat_DOWNLOAD_DIR}/readstat-build)
+# set(readstat_INCLUDE_DIRS ${readstat_DOWNLOAD_DIR}/readstat-install/include)
+# set(readstat_LIBRARY_DIRS ${readstat_DOWNLOAD_DIR}/readstat-install/lib)
 
 list(POP_BACK CMAKE_MESSAGE_CONTEXT)
