@@ -28,12 +28,18 @@ jobs:
           security unlock-keychain -p $MACOS_KEYCHAIN_PWD build.keychain
           security import Certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_KEYCHAIN_PWD build.keychain
-      - name: Update Homebrew
+      - name: Updating Homebrew
         run: brew update --preinstall
-      - name: Requirements
+      - name: Preparing the Requirements
         run: brew install automake jsoncpp bison cmake qt boost pkg-config libarchive zlib libiconv openssl
+      - name: Setting up the Environment Variables
+        run: |
+          export PKG_CONFIG_PATH="/usr/local/opt/zlib/lib/pkgconfig:$PKG_CONFIG_PATH"
+          export PKG_CONFIG_PATH="/usr/local/opt/openssl@3/lib/pkgconfig:$PKG_CONFIG_PATH"
+          export PKG_CONFIG_PATH="/usr/local/opt/qt/lib/pkgconfig:${PKG_CONFIG_PATH}"
+          export PKG_CONFIG_PATH="/usr/local/opt/libarchive/lib/pkgconfig:${PKG_CONFIG_PATH}"
       - uses: actions/checkout@v2
-      - name: configure
+      - name: Configure
         run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=OFF -DINSTALL_R_FRAMEWORK=ON -DINSTALL_R_MODULES=ON
-      - name: build
+      - name: Build
         run: cmake --build build --parallel 10
