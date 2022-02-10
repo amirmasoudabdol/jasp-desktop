@@ -36,11 +36,8 @@ jobs:
       - name: Setting up the Environment Variables
         run: |
           export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
-      #     export PKG_CONFIG_PATH="/usr/local/opt/openssl@3/lib/pkgconfig:${PKG_CONFIG_PATH}"
-      #     export PKG_CONFIG_PATH="/usr/local/opt/qt/lib/pkgconfig:${PKG_CONFIG_PATH}"
-      #     export PKG_CONFIG_PATH="/usr/local/opt/libarchive/lib/pkgconfig:${PKG_CONFIG_PATH}"
       - uses: actions/checkout@v2
       - name: Configure
-        run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=OFF -DINSTALL_R_FRAMEWORK=ON -DINSTALL_R_MODULES=ON
+        run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=ON -DINSTALL_R_FRAMEWORK=ON -DINSTALL_R_MODULES=ON
       - name: Build
         run: cmake --build build --parallel 10

@@ -94,19 +94,19 @@ set(CPM_USE_LOCAL_PACKAGES ON)
 # with the .tar.gz to have a faster download.
 #   - For some reason, the .tar.gz doesn't support CMake!
 #   - It's not necessary to pass a list of targets. CMake only builds want it needs
-cpmaddpackage(
-  NAME
-  Boost
-  VERSION
-  1.78.0
-  OPTIONS
-  "BUILD_TESTING:BOOL=OFF"
-  "CMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
-  "BOOST_INCLUDE_LIBRARIES:STRING=nowide\\\\;filesystem\\\\;system\\\\;date_time\\\\;timer\\\\;chrono\\\\;atomic"
-  GITHUB_REPOSITORY
-  "boostorg/boost"
-  GIT_TAG
-  "boost-1.78.0")
+# cpmaddpackage(
+#   NAME
+#   Boost
+#   VERSION
+#   1.78.0
+#   OPTIONS
+#   "BUILD_TESTING:BOOL=OFF"
+#   "CMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
+#   "BOOST_INCLUDE_LIBRARIES:STRING=nowide\\\\;filesystem\\\\;system\\\\;date_time\\\\;timer\\\\;chrono\\\\;atomic"
+#   GITHUB_REPOSITORY
+#   "boostorg/boost"
+#   GIT_TAG
+#   "boost-1.78.0")
 
 #
 # Removing these, since they are part of the Xcode and MSVC's toolchain
@@ -126,25 +126,25 @@ cpmaddpackage(
   GIT_TAG
   "v3.5.2")
 
-cpmaddpackage(
-  NAME
-  ZLIB
-  VERSION
-  1.2.11
-  GITHUB_REPOSITORY
-  "madler/zlib"
-  GIT_TAG
-  "v1.2.11")
+# cpmaddpackage(
+#   NAME
+#   ZLIB
+#   VERSION
+#   1.2.11
+#   GITHUB_REPOSITORY
+#   "madler/zlib"
+#   GIT_TAG
+#   "v1.2.11")
 
-cpmaddpackage(
-  NAME
-  ZSTD
-  VERSION
-  1.5.2
-  GITHUB_REPOSITORY
-  "facebook/zstd"
-  GIT_TAG
-  "v1.5.2")
+# cpmaddpackage(
+#   NAME
+#   ZSTD
+#   VERSION
+#   1.5.2
+#   GITHUB_REPOSITORY
+#   "facebook/zstd"
+#   GIT_TAG
+#   "v1.5.2")
 
 # endif()
 

@@ -1,6 +1,5 @@
 list(APPEND CMAKE_MESSAGE_CONTEXT Common)
 
-find_package(ZLIB REQUIRED)
 find_package(LibArchive REQUIRED)
 
 set(Boost_USE_STATIC_LIBS ON)
