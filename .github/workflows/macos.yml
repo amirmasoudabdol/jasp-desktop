@@ -31,7 +31,7 @@ jobs:
       - name: Update Homebrew
         run: brew update --preinstall
       - name: Requirements
-        run: brew install automake jsoncpp bison cmake qt boost pkg-config
+        run: brew install automake jsoncpp bison cmake qt boost pkg-config libarchive zlib libiconv openssl
       - uses: actions/checkout@v2
       - name: configure
         run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=OFF -DINSTALL_R_FRAMEWORK=ON -DINSTALL_R_MODULES=ON
