@@ -267,7 +267,7 @@ if(APPLE)
 
     execute_process(
       # COMMAND_ECHO STDOUT
-      ERROR_QUIET OUTPUT_QUIET
+      # ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${R_HOME_PATH}
       COMMAND ./R --slave --no-restore --no-save
               --file=${MODULES_RENV_ROOT_PATH}/install-RInside.R)
@@ -283,7 +283,7 @@ if(APPLE)
     message(CHECK_START "Patching RInside and Rcpp")
     execute_process(
       # COMMAND_ECHO STDOUT
-      ERROR_QUIET OUTPUT_QUIET
+      # ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${R_HOME_PATH}
       COMMAND
         ${CMAKE_COMMAND} -D
