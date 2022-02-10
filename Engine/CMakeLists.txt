@@ -44,8 +44,9 @@ add_executable(JASPEngine ${HEADER_FILES} ${SOURCE_FILES})
 
 add_dependencies(JASPEngine R-Interface)
 
-target_include_directories(JASPEngine PUBLIC ${LIBJSONCPP_INCLUDE_DIRS}
-                                             ${PROJECT_SOURCE_DIR}/R-Interface)
+target_include_directories(
+  JASPEngine PUBLIC ${LibArchive_INCLUDE_DIRS} ${LIBJSONCPP_INCLUDE_DIRS}
+                    ${PROJECT_SOURCE_DIR}/R-Interface)
 
 target_link_libraries(
   JASPEngine

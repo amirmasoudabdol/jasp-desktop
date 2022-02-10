@@ -56,7 +56,8 @@ endif()
 
 target_include_directories(
   Common
-  PUBLIC ${LIBJSONCPP_INCLUDE_DIRS}
+  PUBLIC ${LibArchive_INCLUDE_DIRS}
+         ${LIBJSONCPP_INCLUDE_DIRS}
          # JASP
          jaspColumnEncoder
          # R
