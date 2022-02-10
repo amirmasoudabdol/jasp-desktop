@@ -21,6 +21,7 @@ jobs:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
           MACOS_KEYCHAIN_PWD: ${{ secrets.MACOS_KEYCHAIN_PWD }}
+          PKG_CONFIG_PATH: /usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/openssl@3/lib/pkgconfig:/usr/local/opt/qt/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig
         run: |
           echo $MACOS_CERTIFICATE | base64 --decode > Certificate.p12
           security create-keychain -p $MACOS_KEYCHAIN_PWD build.keychain
@@ -32,12 +33,12 @@ jobs:
         run: brew update --preinstall
       - name: Preparing the Requirements
         run: brew install automake jsoncpp bison cmake qt boost pkg-config libarchive zlib libiconv openssl
-      - name: Setting up the Environment Variables
-        run: |
-          export PKG_CONFIG_PATH="/usr/local/opt/zlib/lib/pkgconfig:$PKG_CONFIG_PATH"
-          export PKG_CONFIG_PATH="/usr/local/opt/openssl@3/lib/pkgconfig:$PKG_CONFIG_PATH"
-          export PKG_CONFIG_PATH="/usr/local/opt/qt/lib/pkgconfig:${PKG_CONFIG_PATH}"
-          export PKG_CONFIG_PATH="/usr/local/opt/libarchive/lib/pkgconfig:${PKG_CONFIG_PATH}"
+      # - name: Setting up the Environment Variables
+      #   run: |
+      #     export PKG_CONFIG_PATH="/usr/local/opt/zlib/lib/pkgconfig:${PKG_CONFIG_PATH}"
+      #     export PKG_CONFIG_PATH="/usr/local/opt/openssl@3/lib/pkgconfig:${PKG_CONFIG_PATH}"
+      #     export PKG_CONFIG_PATH="/usr/local/opt/qt/lib/pkgconfig:${PKG_CONFIG_PATH}"
+      #     export PKG_CONFIG_PATH="/usr/local/opt/libarchive/lib/pkgconfig:${PKG_CONFIG_PATH}"
       - uses: actions/checkout@v2
       - name: Configure
         run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=OFF -DINSTALL_R_FRAMEWORK=ON -DINSTALL_R_MODULES=ON
