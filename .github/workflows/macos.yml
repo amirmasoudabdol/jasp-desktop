@@ -1,0 +1,32 @@
+name: macOS
+
+on:
+  push:
+    branches:
+      - development
+      - github-action-tests
+
+jobs:
+  xcode:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        xcode: [13.2, 12.4]
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
+
+    steps:
+      - name: Requirements
+        run: |
+          brew install automake
+          brew install jsoncpp
+          brew install bison
+          brew install cmake
+          brew install qt
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: cmake
+        run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=ON -DINSTALL_R_FRAMEWORK=ON -DINSTALL_R_MODULES=ON
+      - name: build
+        run: cmake --build build --parallel 10
