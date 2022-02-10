@@ -59,7 +59,8 @@ target_link_libraries(
          Boost::timer
          Boost::chrono
          # System
-         LibArchive::LibArchive)
+         # LibArchive::LibArchive
+         ${LibArchive_LIBRARIES})
 
 if(IWYU_EXECUTABLE AND RUN_IWYU)
   set_target_properties(JASPEngine PROPERTIES CXX_INCLUDE_WHAT_YOU_USE

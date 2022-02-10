@@ -71,7 +71,7 @@ target_link_libraries(
          Boost::date_time
          Boost::timer
          Boost::chrono
-         LibArchive::LibArchive
+         ${LibArchive_LIBRARIES}
          ${LIBJSONCPP_LINK_LIBRARIES}
          # Only if JASP_USES_QT_HERE is ON
          $<$<BOOL:${JASP_USES_QT_HERE}>:Qt::Core>)
