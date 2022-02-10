@@ -29,6 +29,15 @@ set(CURRENT_R_VERSION ${R_VERSION_MAJOR_MINOR})
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/Install)
 # message(STATUS ${CMAKE_INSTALL_PREFIX})
 
+# When everything is done, we should be able to just activate
+# this and build it for two architectures. This will also download
+# the correct R.framework
+# set(CMAKE_OSX_ARCHITECTURES "x86_64" "arm64")
+set(CMAKE_APPLE_SILICON_PROCESSOR "x86_64")
+set(CMAKE_HOST_SYSTEM_PROCESSOR "x86_64")
+message(STATUS ${CMAKE_APPLE_SILICON_PROCESSOR})
+message(STATUS ${CMAKE_HOST_SYSTEM_PROCESSOR})
+
 if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
   set(R_DIR_NAME "${R_VERSION_MAJOR_MINOR}-arm64")
 else()
@@ -51,11 +60,6 @@ find_program(AUTORECONF NAMES autoreconf)
 find_program(AUTOUPDATE NAMES autoupdate)
 find_program(CCACHE_EXECUTABLE ccache)
 find_program(IWYU_EXECUTABLE include-what-you-use)
-
-# When everything is done, we should be able to just activate
-# this and build it for two architectures. This will also download
-# the correct R.framework
-# set(CMAKE_OSX_ARCHITECTURES "x86_64" "arm64")
 
 # With this, we can hit up to 90% speed up!
 option(USE_CCACHE "Whether to use ccache for build" OFF)
