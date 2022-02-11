@@ -21,6 +21,7 @@ jobs:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
           MACOS_KEYCHAIN_PWD: ${{ secrets.MACOS_KEYCHAIN_PWD }}
+          PKG_CONFIG_PATHS_FOR_CMAKE: "/usr/local/opt/zlib;/usr/local/opt/openssl@3;/usr/local/opt/qt;/usr/local/opt/libarchive"
         run: |
           echo $MACOS_CERTIFICATE | base64 --decode > Certificate.p12
           security create-keychain -p $MACOS_KEYCHAIN_PWD build.keychain
@@ -39,6 +40,6 @@ jobs:
           pkg-config --libs libarchive
       - uses: actions/checkout@v2
       - name: Configure
-        run: cmake --trace -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=ON -DINSTALL_R_FRAMEWORK=ON -DINSTALL_R_MODULES=ON -DCMAKE_PREFIX_PATH=$PKG_CONFIG_PATH
+        run: cmake --trace -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=ON -DINSTALL_R_FRAMEWORK=ON -DINSTALL_R_MODULES=ON -DCMAKE_PREFIX_PATH=$PKG_CONFIG_PATHS_FOR_CMAKE
       - name: Build
         run: cmake --build build --parallel 10 --trace
