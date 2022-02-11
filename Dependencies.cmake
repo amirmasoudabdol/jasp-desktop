@@ -113,18 +113,18 @@ set(CPM_USE_LOCAL_PACKAGES ON)
 #
 # if(WIN32 OR INS)
 
-cpmaddpackage(
-  NAME
-  LibArchive
-  VERSION
-  3.5.2
-  OPTIONS
-  "ENABLE_TEST OFF"
-  "JSONCPP_WITH_POST_BUILD_UNITTEST OFF"
-  GITHUB_REPOSITORY
-  "libarchive/libarchive"
-  GIT_TAG
-  "v3.5.2")
+# cpmaddpackage(
+#   NAME
+#   LibArchive
+#   VERSION
+#   3.5.2
+#   OPTIONS
+#   "ENABLE_TEST OFF"
+#   "JSONCPP_WITH_POST_BUILD_UNITTEST OFF"
+#   GITHUB_REPOSITORY
+#   "libarchive/libarchive"
+#   GIT_TAG
+#   "v3.5.2")
 
 # cpmaddpackage(
 #   NAME
