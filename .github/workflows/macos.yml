@@ -35,7 +35,9 @@ jobs:
         run: brew install automake jsoncpp bison cmake qt boost pkg-config libarchive zlib libiconv openssl
       - name: Setting up the Environment Variables
         run: |
-          export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
+          export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+          echo "PKG_CONFIG_PATH: ${PKG_CONFIG_PATH}"
+          pkg-config --libs libarchive
       - uses: actions/checkout@v2
       - name: Configure
         run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=ON -DINSTALL_R_FRAMEWORK=ON -DINSTALL_R_MODULES=ON
