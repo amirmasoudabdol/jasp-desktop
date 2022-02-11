@@ -211,7 +211,7 @@ externalproject_add(
   GIT_TAG "v1.1.7"
   BUILD_IN_SOURCE ON
   STEP_TARGETS configure build install
-  CONFIGURE_COMMAND ./autogen.sh
+  CONFIGURE_COMMAND ${AUTORECONF} -fi
   COMMAND ${AUTOUPDATE}
   COMMAND ./configure --enable-static --prefix=<DOWNLOAD_DIR>/readstat-install
   BUILD_COMMAND ${MAKE}

@@ -3,9 +3,17 @@ list(APPEND CMAKE_MESSAGE_CONTEXT R-Interface)
 file(GLOB SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/jaspResults/src/*.cpp")
 list(APPEND SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/jasprcpp.cpp")
 
-add_library(R-Interface ${HEADER_FILES} ${SOURCE_FILES})
+set(Boost_USE_STATIC_LIBS ON)
+find_package(
+  Boost REQUIRED
+  COMPONENTS nowide
+             filesystem
+             system
+             date_time
+             timer
+             chrono)
 
-add_dependencies(R-Interface Common)
+add_library(R-Interface ${HEADER_FILES} ${SOURCE_FILES})
 
 target_include_directories(
   R-Interface
@@ -13,6 +21,7 @@ target_include_directories(
          jaspResults
          ${PROJECT_SOURCE_DIR}/Common
          ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder
+         ${LIBJSONCPP_INCLUDE_DIRS}
          # R
          ${R_HOME_PATH}/include
          ${RCPP_PATH}/include
@@ -20,7 +29,12 @@ target_include_directories(
 
 target_link_libraries(
   R-Interface
-  PUBLIC Common
+  PUBLIC Boost::nowide
+         Boost::filesystem
+         Boost::system
+         Boost::date_time
+         Boost::timer
+         Boost::chrono
          ${_R_Framework}
          ${_LIB_RINSIDE}
          $<$<BOOL:${JASP_USES_QT_HERE}>:Qt::Core>)

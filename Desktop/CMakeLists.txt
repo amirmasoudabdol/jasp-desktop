@@ -1,7 +1,5 @@
 list(APPEND CMAKE_MESSAGE_CONTEXT Desktop)
 
-set(CMAKE_BUILD_WITH_INSTALL_RPATH YES)
-
 find_package(ZLIB REQUIRED)
 find_package(Iconv REQUIRED)
 
@@ -33,7 +31,6 @@ find_package(
              OpenGL
              Widgets
              Qml
-             WebEngineWidgets # remove this after the rebase
              WebEngineQuick
              WebChannel
              Svg
@@ -43,6 +40,7 @@ find_package(
              DBus
              QuickTemplates2
              Quick
+             QuickLayouts
              QuickControls2
              QuickControls2Impl
              QmlWorkerScript
@@ -243,7 +241,6 @@ if(APPLE)
       Qt::OpenGL
       Qt::Widgets
       Qt::Qml
-      Qt::WebEngineWidgets
       Qt::WebEngineQuick
       Qt::WebChannel
       Qt::Svg
@@ -251,6 +248,7 @@ if(APPLE)
       Qt::PrintSupport
       Qt::Xml
       Qt::Quick
+      Qt::QuickLayouts
       Qt::QuickControls2
       Qt::QuickControls2Impl
       Qt::QuickWidgets
