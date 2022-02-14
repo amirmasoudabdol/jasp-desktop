@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - github-action-tests
+      - qt-6.2-cmake-cpp-17
 
 jobs:
   xcode:
