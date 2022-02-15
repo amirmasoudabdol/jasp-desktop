@@ -64,13 +64,18 @@ endif()
 
 target_include_directories(
   Common
-  PUBLIC ${LibArchive_INCLUDE_DIRS}
-         ${LIBJSONCPP_INCLUDE_DIRS}
+  PUBLIC ${LIBJSONCPP_INCLUDE_DIRS}
+         ${CONAN_INCLUDE_DIRS_libjson}
          # JASP
          jaspColumnEncoder
          # R
          ${R_HOME_PATH}/include
-         ${RCPP_PATH}/include)
+         ${RCPP_PATH}/include
+         # Conan
+         ${CONAN_INCLUDE_DIRS_JSONCPP}
+         ${CONAN_INCLUDE_DIRS_LIBARCHIVE}
+         #
+         ${Boost_INCLUDE_DIRS})
 
 target_link_libraries(
   Common
@@ -80,7 +85,14 @@ target_link_libraries(
          Boost::date_time
          Boost::timer
          Boost::chrono
-         ${LibArchive_LIBRARIES}
+         # Conan
+         # LibArchive::LibArchive
+         # ${LIBJSONCPP_LINK_LIBRARIES}
+         # ${CONAN_LIBS_libarchive}
+         # ${CONAN_LIBS_jsoncpp}
+         $<$<BOOL:${USE_CONAN}>:CONAN_PKG::jsoncpp>
+         $<$<BOOL:${USE_CONAN}>:CONAN_PKG::libarchive>
+         LibArchive::LibArchive
          ${LIBJSONCPP_LINK_LIBRARIES}
          # Only if JASP_USES_QT_HERE is ON
          $<$<BOOL:${JASP_USES_QT_HERE}>:Qt::Core>)
@@ -113,7 +125,7 @@ elseif(WIN32)
   # TODO: I have no idea what these are. For now, for Windows build, I'm just
   # translating the Qmake
   #
-  target_link_libraries(Common PUBLIC ole32 oleaut32)
+  # target_link_libraries(Common PUBLIC ole32 oleaut32)
 endif()
 
 # I'm leaving the flatpak config behind, as it should be pretty straighforward,

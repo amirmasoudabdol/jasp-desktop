@@ -64,12 +64,12 @@ if(NOT INSTALL_JASP_REQUIRED_LIBRARIES)
 
 else()
 
-  # find_library(
-  #   LIBJSONCPP REQUIRED
-  #   NAMES jsoncpp
-  #   HINTS ${jsoncpp_LIBRARY_DIRS})
+  #   # find_library(
+  #   #   LIBJSONCPP REQUIRED
+  #   #   NAMES jsoncpp
+  #   #   HINTS ${jsoncpp_LIBRARY_DIRS})
 
-  # WARNING: This is not the way to do it, and it does not work with Ninja :\
+  #   # WARNING: This is not the way to do it, and it does not work with Ninja :\
 
   # jsoncpp
   set(LIBJSONCPP_INCLUDE_DIRS ${jsoncpp_INCLUDE_DIRS})
@@ -81,6 +81,7 @@ else()
   set(LIBREADSTAT_LIBRARY_DIRS ${readstat_LIBRARY_DIRS})
   set(LIBREADSTAT_LINK_LIBRARIES ${LIBREADSTAT_LIBRARY_DIRS}/libreadstat.a)
 
+  # endif()
 endif()
 
 # TODO:
@@ -223,12 +224,8 @@ if(INSTALL_JASP_REQUIRED_LIBRARIES)
 endif()
 
 target_include_directories(
-  JASP
-  PUBLIC ${LIBJSONCPP_INCLUDE_DIRS}
-         ${LibArchive_INCLUDE_DIRS}
-         ${LIBREADSTAT_INCLUDE_DIRS}
-         ${PROJECT_SOURCE_DIR}/Common
-         ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder)
+  JASP PUBLIC ${LIBREADSTAT_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/Common
+              ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder)
 
 if(APPLE)
 
@@ -258,6 +255,10 @@ if(APPLE)
       Qt::QmlWorkerScript
       # OpenSSL::SSL
       # OpenSSL::Crypto
+      # System
+      $<$<BOOL:${USE_CONAN}>:CONAN_PKG::libiconv>
+      $<$<BOOL:${USE_CONAN}>:CONAN_PKG::zlib>
+      $<$<BOOL:${USE_CONAN}>:CONAN_PKG::openssl>
       # Based on our config, this is either from PkgConfig, or the build/_deps/
       ${LIBREADSTAT_LINK_LIBRARIES}
       # System

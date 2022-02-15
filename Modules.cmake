@@ -174,8 +174,6 @@ if(INSTALL_R_MODULES)
       NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
       -D PATH=${R_HOME_PATH}/library -D R_HOME_PATH=${R_HOME_PATH} -D
       R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake
-    COMMAND ./R --slave --no-restore --no-save
-            --file=${MODULES_RENV_ROOT_PATH}/install-jaspGraphs.R
     COMMENT "------ Installing 'jaspBase'")
 
   add_custom_command(
@@ -240,7 +238,10 @@ if(INSTALL_R_MODULES)
     #   DESTINATION ${CMAKE_INSTALL_PREFIX}/Modules/
     #   COMPONENT ${MODULE})
 
-    add_dependencies(${MODULE} JASPEngine)
+    # To fix the Rpath stuff
+    if(APPLE)
+      add_dependencies(${MODULE} JASPEngine)
+    endif()
 
     # Making sure that CMake doesn't parallelize the installation of the modules
 
@@ -296,7 +297,10 @@ if(INSTALL_R_MODULES)
     #   DESTINATION ${CMAKE_INSTALL_PREFIX}/Modules/
     #   COMPONENT ${MODULE})
 
-    add_dependencies(${MODULE} JASPEngine)
+    # To fix the Rpath stuff
+    if(APPLE)
+      add_dependencies(${MODULE} JASPEngine)
+    endif()
 
     # Making sure that CMake doesn't parallelize the installation of the modules
 

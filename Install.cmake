@@ -58,7 +58,7 @@ if(APPLE)
   set(PARALLEL_SIGNER "${CMAKE_BINARY_DIR}/ParallelSigner.sh")
 
   configure_file(${CMAKE_SOURCE_DIR}/Tools/macOS/ParallelSigner.sh.in
-                 ${CMAKE_BINARY_DIR}/ParallelSigner.sh)
+                 ${CMAKE_BINARY_DIR}/ParallelSigner.sh @ONLY)
 
   configure_file(${CMAKE_SOURCE_DIR}/Sign.cmake.in
                  ${CMAKE_BINARY_DIR}/Sign.cmake @ONLY)

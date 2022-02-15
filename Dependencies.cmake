@@ -1,3 +1,5 @@
+list(APPEND CMAKE_MESSAGE_CONTEXT Dependencies)
+
 # If set, CMake tries to download all the necessary dependencies
 #
 #   - Boost, jsoncpp, and readstat
@@ -33,7 +35,7 @@
 
 # Adding caching for CPM, this is going to be useful later that we
 # want to have CI builds on GitHub, see here: https://github.com/cpm-cmake/CPM.cmake/wiki/Caching-with-CPM.cmake-and-ccache-on-GitHub-Actions
-set(CPM_SOURCE_CACHE ${PROJECT_SOURCE_DIR}/.cache/CPM)
+# set(CPM_SOURCE_CACHE ${PROJECT_SOURCE_DIR}/.cache/CPM)
 
 add_custom_target(Dependencies)
 
@@ -48,36 +50,8 @@ endif()
 #   - On macOS, this will place the R.framework into the ${CMAKE_SOURCE_DIR}/Frameworks
 #
 if(WIN32)
-  find_program(EXTRACT NAMES extract)
 
-  set(R_PACKAGE_NAME "R-${R_VERSION}.pkg")
-  set(R_DOWNLOAD_URL
-      "https://cran.r-project.org/bin/windows/base/R-${R_VERSION}-win.exe")
-  set(R_PACKAGE_HASH "776384c989ea061728e781b6b9ce5b92")
-
-  if(NOT EXISTS ${CMAKE_SOURCE_DIR}/R)
-
-    fetchcontent_declare(
-      r_win_exe
-      URL ${R_DOWNLOAD_URL}
-      URL_HASH MD5=${R_PACKAGE_HASH}
-      DOWNLOAD_NO_EXTRACT ON
-      DOWNLOAD_NAME ${R_PACKAGE_NAME})
-
-    fetchcontent_populate(r_win_exe)
-    fetchcontent_getproperties(r_win_exe)
-
-    if(r_win_exe_POPULATED)
-      execute_process(
-        WORKING_DIRECTORY ${r_win_exe_SOURCE_DIR}
-        COMMAND extract /c ${R_PACKAGE_NAME} /l ${r_win_exe_BINARY_DIR})
-      execute_process(
-        WORKING_DIRECTORY ${r_win_exe_SOURCE_DIR}
-        COMMAND cp -r ${r_win_exe_BINARY_DIR} ${CMAKE_SOURCE_DIR}/R)
-
-    endif()
-
-  endif()
+  # Moved to the R.cmake
 
 elseif(APPLE)
 
@@ -111,42 +85,42 @@ set(CPM_USE_LOCAL_PACKAGES ON)
 #
 # Removing these, since they are part of the Xcode and MSVC's toolchain
 #
-# if(WIN32 OR INS)
+if(NOT APPLE)
 
-# cpmaddpackage(
-#   NAME
-#   LibArchive
-#   VERSION
-#   3.5.2
-#   OPTIONS
-#   "ENABLE_TEST OFF"
-#   "JSONCPP_WITH_POST_BUILD_UNITTEST OFF"
-#   GITHUB_REPOSITORY
-#   "libarchive/libarchive"
-#   GIT_TAG
-#   "v3.5.2")
+  cpmaddpackage(
+    NAME
+    LibArchive
+    VERSION
+    3.5.2
+    OPTIONS
+    "ENABLE_TEST OFF"
+    "JSONCPP_WITH_POST_BUILD_UNITTEST OFF"
+    GITHUB_REPOSITORY
+    "libarchive/libarchive"
+    GIT_TAG
+    "v3.5.2")
 
-# cpmaddpackage(
-#   NAME
-#   ZLIB
-#   VERSION
-#   1.2.11
-#   GITHUB_REPOSITORY
-#   "madler/zlib"
-#   GIT_TAG
-#   "v1.2.11")
+  cpmaddpackage(
+    NAME
+    ZLIB
+    VERSION
+    1.2.11
+    GITHUB_REPOSITORY
+    "madler/zlib"
+    GIT_TAG
+    "v1.2.11")
 
-# cpmaddpackage(
-#   NAME
-#   ZSTD
-#   VERSION
-#   1.5.2
-#   GITHUB_REPOSITORY
-#   "facebook/zstd"
-#   GIT_TAG
-#   "v1.5.2")
+  cpmaddpackage(
+    NAME
+    ZSTD
+    VERSION
+    1.5.2
+    GITHUB_REPOSITORY
+    "facebook/zstd"
+    GIT_TAG
+    "v1.5.2")
 
-# endif()
+endif()
 
 # ----- jsoncpp ------
 #
@@ -222,3 +196,5 @@ set(readstat_DOWNLOAD_DIR ${DOWNLOAD_DIR})
 set(readstat_BUILD_DIR ${readstat_DOWNLOAD_DIR}/readstat-build)
 set(readstat_INCLUDE_DIRS ${readstat_DOWNLOAD_DIR}/readstat-install/include)
 set(readstat_LIBRARY_DIRS ${readstat_DOWNLOAD_DIR}/readstat-install/lib)
+
+list(POP_BACK CMAKE_MESSAGE_CONTEXT)
