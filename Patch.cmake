@@ -48,8 +48,8 @@ foreach(FILE ${LIBRARIES})
        OR (FILE MATCHES "libtbb.dylib"))
 
       execute_process(
-        # COMMAND_ECHO STDOUT
-        ERROR_QUIET OUTPUT_QUIET
+        COMMAND_ECHO STDOUT
+        # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${PATH}
         COMMAND
           install_name_tool -change "@rpath/libtbbmalloc.dylib"
@@ -57,8 +57,8 @@ foreach(FILE ${LIBRARIES})
           "${FILE}")
 
       execute_process(
-        # COMMAND_ECHO STDOUT
-        ERROR_QUIET OUTPUT_QUIET
+        COMMAND_ECHO STDOUT
+        # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${PATH}
         COMMAND
           install_name_tool -change "@rpath/libtbbmalloc_proxy.dylib"
@@ -66,8 +66,8 @@ foreach(FILE ${LIBRARIES})
           "${FILE}")
 
       execute_process(
-        # COMMAND_ECHO STDOUT
-        ERROR_QUIET OUTPUT_QUIET
+        COMMAND_ECHO STDOUT
+        # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${PATH}
         COMMAND
           install_name_tool -change "@rpath/libtbb.dylib"
@@ -128,11 +128,11 @@ foreach(FILE ${LIBRARIES})
 
     # Changing the `R_HOME/lib/` prefix
     execute_process(
-      # COMMAND_ECHO STDOUT
-      ERROR_QUIET OUTPUT_QUIET
+      COMMAND_ECHO STDOUT
+      # ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${PATH}
       COMMAND
-        bash ${NAME_TOOL_EXECUTABLE} "${FILE}"
+        bash ${NAME_TOOL_PREFIX_PATCHER} "${FILE}"
         "/Library/Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/lib"
         "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/lib"
     )
@@ -141,25 +141,25 @@ foreach(FILE ${LIBRARIES})
     # These are additional libraries needed for arm64.
     # @todo, at some point, we might need to have a case for them, but for now they are fine
     execute_process(
-      # COMMAND_ECHO STDOUT
-      ERROR_QUIET OUTPUT_QUIET
+      COMMAND_ECHO STDOUT
+      # ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${PATH}
       COMMAND
-        bash ${NAME_TOOL_EXECUTABLE} "${FILE}" "/opt/R/arm64/lib"
+        bash ${NAME_TOOL_PREFIX_PATCHER} "${FILE}" "/opt/R/arm64/lib"
         "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/opt/R/arm64/lib"
     )
 
     # Changing the library `id`s
     execute_process(
-      # COMMAND_ECHO STDOUT
-      ERROR_QUIET OUTPUT_QUIET
+      COMMAND_ECHO STDOUT
+      # ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${PATH}
       COMMAND install_name_tool -id "${NEW_ID}" "${FILE}")
 
     # Signing the library
     execute_process(
-      # COMMAND_ECHO STDOUT
-      ERROR_QUIET OUTPUT_QUIET
+      COMMAND_ECHO STDOUT
+      # ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${PATH}
       COMMAND codesign --force --sign
               "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)" "${FILE}")
