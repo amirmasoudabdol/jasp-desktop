@@ -162,7 +162,7 @@ if(APPLE)
 
       # Patch and sign all first party libraries
       execute_process(
-        # COMMAND_ECHO STDOUT
+        COMMAND_ECHO STDOUT
         # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}
         COMMAND
@@ -173,7 +173,7 @@ if(APPLE)
 
       # R binary should be patched as well
       execute_process(
-        # COMMAND_ECHO STDOUT
+        COMMAND_ECHO STDOUT
         # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}
         COMMAND
@@ -185,7 +185,7 @@ if(APPLE)
 
       message(CHECK_START "Signing '${R_HOME_PATH}/bin/exec/R'")
       execute_process(
-        # COMMAND_ECHO STDOUT
+        COMMAND_ECHO STDOUT
         # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}
         COMMAND
@@ -287,7 +287,7 @@ if(APPLE)
     # Patching RInside and RCpp
     message(CHECK_START "Patching RInside and Rcpp")
     execute_process(
-      # COMMAND_ECHO STDOUT
+      COMMAND_ECHO STDOUT
       # ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${R_HOME_PATH}
       COMMAND
@@ -297,7 +297,7 @@ if(APPLE)
         R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake)
 
     execute_process(
-      # COMMAND_ECHO STDOUT
+      COMMAND_ECHO STDOUT
       # ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${R_HOME_PATH}
       COMMAND
