@@ -81,9 +81,10 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
 
   find_library(
     _LIB_RT
+    # REQUIRED
     NAMES rt
     PATHS /usr/lib
-    NO_DEFAULT_PATH NO_CACHE REQUIRED)
+    NO_DEFAULT_PATH NO_CACHE)
 
   target_link_libraries(Common PUBLIC ${_LIB_RT})
 
@@ -154,6 +155,8 @@ elseif(WIN32)
   # translating the Qmake
   #
   # target_link_libraries(Common PUBLIC ole32 oleaut32)
+else()
+  target_link_libraries(Common PUBLIC "-lrt")
 endif()
 
 # I'm leaving the flatpak config behind, as it should be pretty straighforward,
