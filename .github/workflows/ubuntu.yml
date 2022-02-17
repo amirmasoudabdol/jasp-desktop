@@ -17,9 +17,9 @@ jobs:
       - name: Qt Requirements
         run: |
           sudo apt update
-          brew install qt
+          brew install qt jsoncpp boost zlib libarchive libiconv openssl
       - name: Dependencies
-        run: sudo apt install build-essential jsoncpp mercurial gfortran-9 gfortran-10 flex bison r-base libboost-all-dev cmake libarchive-dev zlibc libzstd-dev
+        run: sudo apt-get install build-essential mercurial gfortran-9 gfortran-10 flex bison r-base cmake libarchive-dev zlibc libzstd-dev
       - uses: actions/checkout@v2
       - name: Configure
         run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=ON -DLINUX_LOCAL_BUILD=ON -DINSTALL_R_MODULES=ON
