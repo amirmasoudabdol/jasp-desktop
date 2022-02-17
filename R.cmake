@@ -144,18 +144,19 @@ if(APPLE)
 
       # Patch and sign all first party libraries
       execute_process(
-        # COMMAND_ECHO STDOUT
+        COMMAND_ECHO STDOUT
         # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}
         COMMAND
           ${CMAKE_COMMAND} -D
           NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
           -D PATH=${R_HOME_PATH} -D R_HOME_PATH=${R_HOME_PATH} -D
-          R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake)
+          R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake
+          --trace-expand)
 
       # R binary should be patched as well
       execute_process(
-        # COMMAND_ECHO STDOUT
+        COMMAND_ECHO STDOUT
         # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}
         COMMAND
@@ -167,7 +168,7 @@ if(APPLE)
 
       message(CHECK_START "Signing '${R_HOME_PATH}/bin/exec/R'")
       execute_process(
-        # COMMAND_ECHO STDOUT
+        COMMAND_ECHO STDOUT
         # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}
         COMMAND

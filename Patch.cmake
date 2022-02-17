@@ -18,7 +18,7 @@ if(NOT APPLE)
   message(STATUS "Nothing to fix here.")
 
 else()
-  
+
   file(
     GLOB_RECURSE
     LIBRARIES
@@ -53,8 +53,8 @@ else()
          OR (FILE MATCHES "libtbb.dylib"))
 
         execute_process(
-          # COMMAND_ECHO STDOUT
-          ERROR_QUIET OUTPUT_QUIET
+          COMMAND_ECHO STDOUT
+          # ERROR_QUIET OUTPUT_QUIET
           WORKING_DIRECTORY ${PATH}
           COMMAND
             install_name_tool -change "@rpath/libtbbmalloc.dylib"
@@ -62,8 +62,8 @@ else()
             "${FILE}")
 
         execute_process(
-          # COMMAND_ECHO STDOUT
-          ERROR_QUIET OUTPUT_QUIET
+          COMMAND_ECHO STDOUT
+          # ERROR_QUIET OUTPUT_QUIET
           WORKING_DIRECTORY ${PATH}
           COMMAND
             install_name_tool -change "@rpath/libtbbmalloc_proxy.dylib"
@@ -71,8 +71,8 @@ else()
             "${FILE}")
 
         execute_process(
-          # COMMAND_ECHO STDOUT
-          ERROR_QUIET OUTPUT_QUIET
+          COMMAND_ECHO STDOUT
+          # ERROR_QUIET OUTPUT_QUIET
           WORKING_DIRECTORY ${PATH}
           COMMAND
             install_name_tool -change "@rpath/libtbb.dylib"
@@ -132,9 +132,10 @@ else()
       endif()
 
       # Changing the `R_HOME/lib/` prefix
+      message(STATUS "1")
       execute_process(
-        # COMMAND_ECHO STDOUT
-        ERROR_QUIET OUTPUT_QUIET
+        COMMAND_ECHO STDOUT
+        # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${PATH}
         COMMAND
           bash ${NAME_TOOL_EXECUTABLE} "${FILE}"
@@ -145,9 +146,10 @@ else()
       # Changing the `/opt/R/arm64/lib` prefix
       # These are additional libraries needed for arm64.
       # @todo, at some point, we might need to have a case for them, but for now they are fine
+      message(STATUS "2")
       execute_process(
-        # COMMAND_ECHO STDOUT
-        ERROR_QUIET OUTPUT_QUIET
+        COMMAND_ECHO STDOUT
+        # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${PATH}
         COMMAND
           bash ${NAME_TOOL_EXECUTABLE} "${FILE}" "/opt/R/arm64/lib"
@@ -155,16 +157,18 @@ else()
       )
 
       # Changing the library `id`s
+      message(STATUS "3")
       execute_process(
-        # COMMAND_ECHO STDOUT
-        ERROR_QUIET OUTPUT_QUIET
+        COMMAND_ECHO STDOUT
+        # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${PATH}
         COMMAND install_name_tool -id "${NEW_ID}" "${FILE}")
 
       # Signing the library
+      message(STATUS "4")
       execute_process(
-        # COMMAND_ECHO STDOUT
-        ERROR_QUIET OUTPUT_QUIET
+        COMMAND_ECHO STDOUT
+        # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${PATH}
         COMMAND codesign --force --sign
                 "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)" "${FILE}")
