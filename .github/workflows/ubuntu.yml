@@ -1,0 +1,30 @@
+name: Ubuntu
+
+on:
+  push:
+    branches:
+      - github-action-tests
+      - qt-6.2-cmake-cpp-17
+
+jobs:
+  xcode:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        qt-version: [6.2]
+
+    steps:
+      - name: Qt Requirements
+        run: |
+          sudo apt update
+      - uses: jurplel/install-qt-action@v2
+        with:
+          version: ${{ matrix.qt-version }}
+          modules: 'qtwebengine qtwebglplugin'
+      - name: Dependencies
+        run: sudo apt install build-essential jsoncpp mercurial gfortran-10 flex bison r-base libboost-all-dev cmake libarchive-dev zlibc libzstd-dev
+      - uses: actions/checkout@v2
+      - name: Configure
+        run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=ON -DLINUX_LOCAL_BUILD=ON -DINSTALL_R_MODULES=ON
+      - name: Build
+        run: cmake --build build
