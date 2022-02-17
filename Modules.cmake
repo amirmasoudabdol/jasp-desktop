@@ -192,8 +192,8 @@ if(INSTALL_R_MODULES)
       ${CMAKE_COMMAND} -D
       NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
       -D PATH=${R_HOME_PATH}/library -D R_HOME_PATH=${R_HOME_PATH} -D
-      R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake
-      --trace-expand
+      R_DIR_NAME=${R_DIR_NAME} -D SIGNING=OFF -P
+      ${PROJECT_SOURCE_DIR}/Patch.cmake --trace-expand
     COMMENT "------ Installing 'jaspBase'")
 
   add_custom_command(
@@ -206,8 +206,8 @@ if(INSTALL_R_MODULES)
       ${CMAKE_COMMAND} -D
       NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
       -D PATH=${R_HOME_PATH}/library -D R_HOME_PATH=${R_HOME_PATH} -D
-      R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake
-      --trace-expand
+      R_DIR_NAME=${R_DIR_NAME} -D SIGNING=OFF -P
+      ${PROJECT_SOURCE_DIR}/Patch.cmake --trace-expand
     COMMENT "------ Installing 'jaspGraphs'")
 
   add_custom_command(
@@ -221,8 +221,8 @@ if(INSTALL_R_MODULES)
       ${CMAKE_COMMAND} -D
       NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
       -D PATH=${R_HOME_PATH}/library -D R_HOME_PATH=${R_HOME_PATH} -D
-      R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake
-      --trace-expand
+      R_DIR_NAME=${R_DIR_NAME} -D SIGNING=OFF -P
+      ${PROJECT_SOURCE_DIR}/Patch.cmake --trace-expand
     COMMENT "------ Installing 'jaspTools'")
 
   message(STATUS "Configuring Common Modules...")
@@ -248,8 +248,8 @@ if(INSTALL_R_MODULES)
         NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
         -D PATH=${MODULES_BINARY_PATH}/${MODULE} -D R_HOME_PATH=${R_HOME_PATH}
         -D R_DIR_NAME=${R_DIR_NAME} -D
-        MODULES_BINARY_PATH=${MODULES_BINARY_PATH} -D MODULE=${MODULE} -P
-        ${PROJECT_SOURCE_DIR}/Patch.cmake --trace-expand
+        MODULES_BINARY_PATH=${MODULES_BINARY_PATH} -D MODULE=${MODULE} -D
+        SIGNING=OFF -P ${PROJECT_SOURCE_DIR}/Patch.cmake --trace-expand
       BYPRODUCTS ${MODULES_BINARY_PATH}/${MODULE}
                  ${MODULES_BINARY_PATH}/${MODULE}_md5sums.rds
                  ${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R
@@ -307,8 +307,8 @@ if(INSTALL_R_MODULES)
         NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
         -D PATH=${MODULES_BINARY_PATH}/${MODULE} -D R_HOME_PATH=${R_HOME_PATH}
         -D R_DIR_NAME=${R_DIR_NAME} -D
-        MODULES_BINARY_PATH=${MODULES_BINARY_PATH} -D MODULE=${MODULE} -P
-        ${PROJECT_SOURCE_DIR}/Patch.cmake --trace-expand
+        MODULES_BINARY_PATH=${MODULES_BINARY_PATH} -D MODULE=${MODULE} -D
+        SIGNING=OFF -P ${PROJECT_SOURCE_DIR}/Patch.cmake --trace-expand
       BYPRODUCTS ${MODULES_BINARY_PATH}/${MODULE}
                  ${MODULES_BINARY_PATH}/${MODULE}_md5sums.rds
                  ${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R
@@ -399,8 +399,8 @@ if(INSTALL_R_MODULES)
             ${CMAKE_COMMAND} -D
             NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
             -D PATH=${jags_HOME} -D R_HOME_PATH=${R_HOME_PATH} -D
-            R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake
-            --trace-expand
+            R_DIR_NAME=${R_DIR_NAME} -D SIGNING=OFF -P
+            ${PROJECT_SOURCE_DIR}/Patch.cmake --trace-expand
           COMMENT "----- Preparing 'jags'")
 
       else()

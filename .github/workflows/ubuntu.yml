@@ -18,7 +18,7 @@ jobs:
         run: |
           sudo apt update
           brew upgrade
-          brew install qt jsoncpp boost libarchive
+          brew install qt jsoncpp boost libarchive glfw
       - name: Dependencies
         run: sudo apt-get -y install build-essential mercurial gfortran-9 gfortran-10 flex bison r-base cmake libarchive-dev zlibc libzstd-dev
       - uses: actions/checkout@v2

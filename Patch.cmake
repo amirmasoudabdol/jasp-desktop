@@ -171,12 +171,18 @@ else()
 
       # Signing the library
       message(STATUS "4")
-      execute_process(
-        COMMAND_ECHO STDOUT
-        # ERROR_QUIET OUTPUT_QUIET
-        WORKING_DIRECTORY ${PATH}
-        COMMAND codesign --force --sign
-                "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)" "${FILE}")
+
+      if(SIGNING)
+
+        execute_process(
+          COMMAND_ECHO STDOUT
+          # ERROR_QUIET OUTPUT_QUIET
+          WORKING_DIRECTORY ${PATH}
+          COMMAND
+            codesign --force --sign
+            "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)" "${FILE}")
+
+      endif()
 
       execute_process(
         COMMAND_ECHO STDOUT
