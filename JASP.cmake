@@ -70,6 +70,12 @@ if(NOT R_REPOSITORY)
       "http://cran.r-project.org"
       CACHE STRING "The CRAN mirror used by 'renv' and 'install.packages'")
 endif()
+
+if(FLATPAK_USED AND (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux"))
+  set(R_REPOSITORY
+    "file:///app/lib64/local-cran")
+endif()
+
 message(STATUS "CRAN mirror: ${R_REPOSITORY}")
 
 option(BUILDING_JASP "Indicates whether we are building JASP or not.
@@ -103,5 +109,11 @@ endif()
 # - [ ] Find the Git location, I think I can use CMake's $ENV{GIT} or something like that
 # - [ ] Find a better name for some of these variables
 # - [ ] Setup the GITHUB_PAT
+
+
+
+# if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+#   add_link_options(-fuse-ld=gold)
+# endif()
 
 list(POP_BACK CMAKE_MESSAGE_CONTEXT)

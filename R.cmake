@@ -8,7 +8,6 @@
 # - [ ] Maybe, the entire R.framework prepration should be a target. The advantages
 #       is that it can be triggered independently, however, it will only be
 #       done during the build stage and not configuration
-# - [ ] R_VERSION_NAME is a better name R_DIR_NAME
 # - [ ] All the code inside the if(APPLE), and if(WIN32) should be turned into
 #       a CMake module. I leave this for later cleanup
 # - [ ] Both R package intaller can be improved by some caching, now cleaning is
@@ -16,8 +15,6 @@
 #
 
 list(APPEND CMAKE_MESSAGE_CONTEXT Config)
-
-# include(Patch.cmake)
 
 set(MODULES_SOURCE_PATH
     ${PROJECT_SOURCE_DIR}/Modules
@@ -36,12 +33,7 @@ set(JASP_ENGINE_PATH
     "${CMAKE_BINARY_DIR}/Desktop/"
     CACHE PATH "Location of the JASPEngine")
 
-# TODO: Replace the version with a variable
 if(APPLE)
-
-  # These are futher paths, and may not exist yet!
-  # CMake throws if it cannot setup the R.framework properly and get to
-  # these paths!
 
   set(R_FRAMEWORK_PATH "${CMAKE_BINARY_DIR}/Frameworks")
   set(R_HOME_PATH
@@ -57,19 +49,9 @@ if(APPLE)
   cmake_print_variables(R_LIBRARY_PATH)
   cmake_print_variables(R_OPT_PATH)
   cmake_print_variables(R_EXECUTABLE)
-
   cmake_print_variables(RCPP_PATH)
   cmake_print_variables(RINSIDE_PATH)
 
-  # This whole thing can be a module of itself but after I make sure that it
-  # fully works
-
-  # TODOs:
-  #
-  # - [ ] I need to check whether I should download the `.tar.gz` version of the
-  #       framework instead. It seems that the `.pkg` version requires xQuartz but
-  #       the former does not.
-  #
   if(INSTALL_R_FRAMEWORK AND (NOT EXISTS
                               ${CMAKE_BINARY_DIR}/Frameworks/R.framework))
 
@@ -162,18 +144,18 @@ if(APPLE)
 
       # Patch and sign all first party libraries
       execute_process(
-        COMMAND_ECHO STDOUT
+        # COMMAND_ECHO STDOUT
         # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}
         COMMAND
           ${CMAKE_COMMAND} -D
-          NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+          NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
           -D PATH=${R_HOME_PATH} -D R_HOME_PATH=${R_HOME_PATH} -D
           R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake)
 
       # R binary should be patched as well
       execute_process(
-        COMMAND_ECHO STDOUT
+        # COMMAND_ECHO STDOUT
         # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}
         COMMAND
@@ -185,7 +167,7 @@ if(APPLE)
 
       message(CHECK_START "Signing '${R_HOME_PATH}/bin/exec/R'")
       execute_process(
-        COMMAND_ECHO STDOUT
+        # COMMAND_ECHO STDOUT
         # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}
         COMMAND
@@ -287,22 +269,22 @@ if(APPLE)
     # Patching RInside and RCpp
     message(CHECK_START "Patching RInside and Rcpp")
     execute_process(
-      COMMAND_ECHO STDOUT
+      # COMMAND_ECHO STDOUT
       # ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${R_HOME_PATH}
       COMMAND
         ${CMAKE_COMMAND} -D
-        NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+        NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
         -D PATH=${R_HOME_PATH}/library/RInside -D R_HOME_PATH=${R_HOME_PATH} -D
         R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake)
 
     execute_process(
-      COMMAND_ECHO STDOUT
+      # COMMAND_ECHO STDOUT
       # ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${R_HOME_PATH}
       COMMAND
         ${CMAKE_COMMAND} -D
-        NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+        NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
         -D PATH=${R_HOME_PATH}/library/Rcpp -D R_HOME_PATH=${R_HOME_PATH} -D
         R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake)
 
@@ -327,7 +309,6 @@ elseif(WIN32)
   # TODO
   #   - [ ] I can use the PATH to R/ as _R_framework and everything else should just work
 
-  # set(R_FRAMEWORK_PATH "${CMAKE_BINARY_DIR}/R")
   set(R_HOME_PATH "${CMAKE_BINARY_DIR}/R")
   set(R_BIN_PATH "${R_HOME_PATH}/bin")
   set(R_LIB_PATH "${R_HOME_PATH}/bin/${R_DIR_NAME}")
@@ -456,27 +437,46 @@ elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
 
   endif()
 
-  set(R_SITE_LIBRARY_PATH $ENV{HOME}/R/site-library)
-  make_directory(${R_SITE_LIBRARY_PATH})
+  if(LINUX_LOCAL_BUILD)
+    message(
+      STATUS
+        "JASP is configured to install all its R depdendencies inside the build folder. If this is not what you want, make sure that 'LINUX_LOCAL_BUILD' parametere is set to OFF, e.g., 'cmake .. -DLINUX_LOCAL_BUILD=OFF'"
+    )
 
-  file(WRITE ${MODULES_RENV_ROOT_PATH}/add-new-libPaths.R
-       ".libPaths(${R_SITE_LIBRARY_PATH})")
+    set(R_LIBS_LOCAL "${CMAKE_BINARY_DIR}/R/library")
+    set(R_LIBRARY_PATH "${R_LIBS_LOCAL}")
+    set(R_OPT_PATH "${CMAKE_BINARY_DIR}/R/opt")
+    make_directory(${R_LIBRARY_PATH})
+    make_directory(${R_OPT_PATH})
+  else() # Flatpak
+    message(
+      WARNING
+        "JASP is configured to install all its depdendencies into the ${R_HOME_PATH}/library. CMake may not be able to continue if the user does not have the right permission to right into ${R_HOME_PATH}/library folder."
+    )
 
-  # execute_process(COMMAND
-  #   ${R_BIN} CMD
-  #   OUTPUT_VARIABLE R_)
+    set(R_LIBS_LOCAL "NULL") # <- This is being used in install-module.R.in
+    set(R_LIBRARY_PATH "${R_HOME_PATH}/library")
+    set(R_OPT_PATH "${R_HOME_PATH}/opt")
+  endif()
 
-  set(R_LIBRARY_PATH "${R_SITE_LIBRARY_PATH}")
-  set(R_OPT_PATH "${R_HOME_PATH}/opt")
   set(R_EXECUTABLE "${R_HOME_PATH}/bin/R")
   set(RCPP_PATH "${R_LIBRARY_PATH}/Rcpp")
   set(RINSIDE_PATH "${R_LIBRARY_PATH}/RInside")
+
+  # This makes sure that `install.packages()` command be called with the right
+  # lib paths in case we are installing locally.
+  if(LINUX_LOCAL_BUILD)
+    set(USE_LOCAL_R_LIBS_PATH ", lib='${R_LIBS_LOCAL}'")
+    set(IS_LINUX_LOCAL_BUILD TRUE)
+  else()
+    set(USE_LOCAL_R_LIBS_PATH "")
+    set(IS_LINUX_LOCAL_BUILD FALSE)
+  endif()
 
   cmake_print_variables(R_HOME_PATH)
   cmake_print_variables(R_LIBRARY_PATH)
   cmake_print_variables(R_OPT_PATH)
   cmake_print_variables(R_EXECUTABLE)
-
   cmake_print_variables(RCPP_PATH)
   cmake_print_variables(RINSIDE_PATH)
 
@@ -488,7 +488,7 @@ elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
     NO_DEFAULT_PATH NO_CACHE REQUIRED)
 
   if(_LIB_R)
-    message(CHECK_PASS "found.")
+    message(CHECK_PASS "found")
     message(STATUS "  ${_LIB_R}")
   else()
     message(CHECK_FAIL "not found in ${R_HOME_PATH}/lib")
@@ -501,12 +501,11 @@ elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
 
     file(
       WRITE ${MODULES_RENV_ROOT_PATH}/install-RInside.R
-      "install.packages('RInside', repos='${R_REPOSITORY}', lib='${R_SITE_LIBRARY_PATH}')"
+      "install.packages(c('RInside', 'Rcpp'), repos='${R_REPOSITORY}' ${USE_LOCAL_R_LIBS_PATH})"
     )
 
     execute_process(
-      COMMAND_ECHO STDOUT
-      # ERROR_QUIET OUTPUT_QUIET
+      ERROR_QUIET OUTPUT_QUIET
       COMMAND R --slave --no-restore --no-save
               --file=${MODULES_RENV_ROOT_PATH}/install-RInside.R)
 
@@ -527,34 +526,12 @@ elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
     NO_DEFAULT_PATH NO_CACHE REQUIRED)
 
   if(_LIB_RINSIDE)
-    message(CHECK_PASS "found.")
+    message(CHECK_PASS "found")
     message(STATUS "  ${_LIB_RINSIDE}")
   else()
     message(CHECK_FAIL "not found in ${RINSIDE_PATH}/lib")
   endif()
 
-  # message(FATAL_ERROR "Step by step...")
-
 endif()
-
-# Amir: Not sure about this yet.
-# GETTEXT_LOCATION = $$(GETTEXT_PATH) #The GETTEXT_PATH can be used as environment for a specific gettext location
-
-# unix {
-#   isEmpty(GETTEXT_LOCATION): GETTEXT_LOCATION=/usr/local/bin
-#   EXTENDED_PATH = $$(PATH):$$GETTEXT_LOCATION:$$R_HOME_PATH:$$dirname(QMAKE_QMAKE)
-# }
-
-# win32 {
-#   isEmpty(GETTEXT_LOCATION): GETTEXT_LOCATION=$${_GIT_LOCATION}\usr\bin
-#   WINQTBIN  = $$winPathFix($$QMAKE_QMAKE)
-#   WINQTBIN ~= s,qmake.exe,,gs
-# }
-
-# message(STATUS "R Configurations:")
-
-# cmake_print_variables(_R_Framework)
-# cmake_print_variables(_LIB_R)
-# cmake_print_variables(_LIB_RINSIDE)
 
 list(POP_BACK CMAKE_MESSAGE_CONTEXT)

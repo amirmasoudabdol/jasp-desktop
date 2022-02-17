@@ -69,6 +69,19 @@ list(REVERSE JASP_EXTRA_MODULES)
 set(JASP_EXTRA_MODULES_COPY ${JASP_EXTRA_MODULES})
 list(POP_FRONT JASP_EXTRA_MODULES_COPY)
 
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+  if (LINUX_LOCAL_BUILD)
+    set(jags_HOME ${R_OPT_PATH}/jags)
+  else()
+    # Flatpak
+    set(jags_HOME /usr)
+  endif()
+else()
+  # On macOS and Windows jags will live inside R.framework/ or R/
+  set(jags_HOME ${R_OPT_PATH}/jags) 
+endif()
+message(STATUS "If necessary, 'jags' will be installed at ${jags_HOME}")
+
 # TODO: Standardize these names, either use PATH, ROOT, or DIR, but everywhere
 
 if(NOT EXISTS ${MODULES_SOURCE_PATH})
@@ -104,6 +117,13 @@ file(COPY ${CMAKE_SOURCE_DIR}/R-Interface/R/workarounds.R
 file(COPY ${CMAKE_SOURCE_DIR}/R-Interface/R/symlinkTools.R
      DESTINATION ${MODULES_BINARY_PATH})
 
+
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+  set(R_PKG_TYPE "source")
+else()
+  set(R_PKG_TYPE "binary")
+endif()
+
 if(INSTALL_R_MODULES)
 
   # Cleaning the renv-path on Windows only, for now.
@@ -113,7 +133,7 @@ if(INSTALL_R_MODULES)
     DIRECTORY
     APPEND
     PROPERTY ADDITIONAL_CLEAN_FILES
-             $<PLATFORM_ID:Windows,${MODULES_BINARY_PATH}>)
+             $<$<PLATFORM_ID:Windows>:${MODULES_BINARY_PATH}>)
 
   add_custom_target(Modules)
 
@@ -125,15 +145,15 @@ if(INSTALL_R_MODULES)
   file(
     WRITE ${MODULES_RENV_ROOT_PATH}/install-jaspBase.R
     "
-    install.packages(c('ggplot2', 'gridExtra', 'gridGraphics',
-                        'jsonlite', 'modules', 'officer', 'pkgbuild',
-                        'plyr', 'qgraph', 'ragg', 'R6', 'renv',
-                        'rjson', 'rvg', 'svglite', 'systemfonts',
-                        'withr', 'testthat',
-                        'data.table', 'httr', 'lifecycle',
-                        'pkgload', 'remotes', 'stringi', 'stringr',
-                        'vdiffr'), type='binary', repos='${R_REPOSITORY}')
-    install.packages('${PROJECT_SOURCE_DIR}/Engine/jaspBase/', type='source', repos=NULL)
+    # install.packages(c('ggplot2', 'gridExtra', 'gridGraphics',
+    #                     'jsonlite', 'modules', 'officer', 'pkgbuild',
+    #                     'plyr', 'qgraph', 'ragg', 'R6', 'renv',
+    #                     'rjson', 'rvg', 'svglite', 'systemfonts',
+    #                     'withr', 'testthat',
+    #                     'data.table', 'httr', 'lifecycle',
+    #                     'pkgload', 'remotes', 'stringi', 'stringr',
+    #                     'vdiffr'), type='${R_PKG_TYPE}', repos='${R_REPOSITORY}' ${USE_LOCAL_R_LIBS_PATH})
+    install.packages('${PROJECT_SOURCE_DIR}/Engine/jaspBase/', type='source', repos=NULL ${USE_LOCAL_R_LIBS_PATH})
     if ('jaspBase' %in% installed.packages()) {
       cat(NULL, file='${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log')
     }
@@ -142,7 +162,7 @@ if(INSTALL_R_MODULES)
   file(
     WRITE ${MODULES_RENV_ROOT_PATH}/install-jaspGraphs.R
     "
-    install.packages('${PROJECT_SOURCE_DIR}/Engine/jaspGraphs/', type='source', repos=NULL)
+    install.packages('${PROJECT_SOURCE_DIR}/Engine/jaspGraphs/', type='source', repos=NULL ${USE_LOCAL_R_LIBS_PATH})
     if ('jaspGraphs' %in% installed.packages()) {
       cat(NULL, file='${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log')
     }
@@ -151,7 +171,7 @@ if(INSTALL_R_MODULES)
   file(
     WRITE ${MODULES_RENV_ROOT_PATH}/install-jaspTools.R
     "
-    install.packages('${PROJECT_SOURCE_DIR}/Tools/jaspTools/', type='source', repos=NULL)
+    install.packages('${PROJECT_SOURCE_DIR}/Tools/jaspTools/', type='source', repos=NULL ${USE_LOCAL_R_LIBS_PATH})
     if ('jaspTools' %in% installed.packages()) {
       cat(NULL, file='${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log')
     }
@@ -167,11 +187,11 @@ if(INSTALL_R_MODULES)
   add_custom_command(
     WORKING_DIRECTORY ${R_HOME_PATH}
     OUTPUT ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
-    COMMAND ./R --slave --no-restore --no-save
+    COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
             --file=${MODULES_RENV_ROOT_PATH}/install-jaspBase.R
     COMMAND
       ${CMAKE_COMMAND} -D
-      NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+      NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
       -D PATH=${R_HOME_PATH}/library -D R_HOME_PATH=${R_HOME_PATH} -D
       R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake
     COMMENT "------ Installing 'jaspBase'")
@@ -180,11 +200,11 @@ if(INSTALL_R_MODULES)
     WORKING_DIRECTORY ${R_HOME_PATH}
     DEPENDS ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
     OUTPUT ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log
-    COMMAND ./R --slave --no-restore --no-save
+    COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
             --file=${MODULES_RENV_ROOT_PATH}/install-jaspGraphs.R
     COMMAND
       ${CMAKE_COMMAND} -D
-      NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+      NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
       -D PATH=${R_HOME_PATH}/library -D R_HOME_PATH=${R_HOME_PATH} -D
       R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake
     COMMENT "------ Installing 'jaspGraphs'")
@@ -194,11 +214,11 @@ if(INSTALL_R_MODULES)
     DEPENDS ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
             ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log
     OUTPUT ${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log
-    COMMAND ./R --slave --no-restore --no-save
+    COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
             --file=${MODULES_RENV_ROOT_PATH}/install-jaspTools.R
     COMMAND
       ${CMAKE_COMMAND} -D
-      NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+      NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
       -D PATH=${R_HOME_PATH}/library -D R_HOME_PATH=${R_HOME_PATH} -D
       R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake
     COMMENT "------ Installing 'jaspTools'")
@@ -211,7 +231,7 @@ if(INSTALL_R_MODULES)
     # to set them up correctly
     make_directory(${MODULES_BINARY_PATH}/${MODULE})
     configure_file(${INSTALL_MODULE_TEMPLATE_FILE}
-                   ${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R)
+                   ${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R @ONLY)
 
     add_custom_target(
       ${MODULE}
@@ -219,11 +239,11 @@ if(INSTALL_R_MODULES)
       DEPENDS ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
               ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log
               ${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log
-      COMMAND ./R --slave --no-restore --no-save
+      COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
               --file=${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R
       COMMAND
         ${CMAKE_COMMAND} -D
-        NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+        NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
         -D PATH=${MODULES_BINARY_PATH}/${MODULE} -D R_HOME_PATH=${R_HOME_PATH}
         -D R_DIR_NAME=${R_DIR_NAME} -D
         MODULES_BINARY_PATH=${MODULES_BINARY_PATH} -D MODULE=${MODULE} -P
@@ -268,7 +288,7 @@ if(INSTALL_R_MODULES)
 
     make_directory(${MODULES_BINARY_PATH}/${MODULE})
     configure_file(${INSTALL_MODULE_TEMPLATE_FILE}
-                   ${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R)
+                   ${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R @ONLY)
 
     add_custom_target(
       ${MODULE}
@@ -277,12 +297,12 @@ if(INSTALL_R_MODULES)
         ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
         ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log
         ${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log
-        $<$<STREQUAL:"${MODULE}","jaspMetaAnalysis">:${R_OPT_PATH}/jags/lib/libjags.dylib>
-      COMMAND ./R --slave --no-restore --no-save
+        $<$<STREQUAL:"${MODULE}","jaspMetaAnalysis">:${jags_HOME}/lib/pkgconfig/jags.pc>
+      COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
               --file=${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R
       COMMAND
         ${CMAKE_COMMAND} -D
-        NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+        NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
         -D PATH=${MODULES_BINARY_PATH}/${MODULE} -D R_HOME_PATH=${R_HOME_PATH}
         -D R_DIR_NAME=${R_DIR_NAME} -D
         MODULES_BINARY_PATH=${MODULES_BINARY_PATH} -D MODULE=${MODULE} -P
@@ -333,18 +353,20 @@ if(INSTALL_R_MODULES)
 
       find_package(BISON)
       if(NOT BISON_FOUND)
-        message(FATAL_ERROR "GNU Bison is required for build 'jags'.")
+        message(FATAL_ERROR "GNU Bison is required for building 'jags'")
       endif()
 
-      make_directory("${R_OPT_PATH}/jags")
+      if(NOT EXISTS ${jags_HOME})
+        make_directory(${jags_HOME})
+      endif()
 
-      set(jags_INCLUDE_DIRS ${R_OPT_PATH}/jags/include)
-      set(jags_LIBRARY_DIRS ${R_OPT_PATH}/jags/lib)
-      set(jags_PKG_CONFIG_PATH ${R_OPT_PATH}/jags/lib/pkgconfig/)
+      set(jags_INCLUDE_DIRS ${jags_HOME}/include)
+      set(jags_LIBRARY_DIRS ${jags_HOME}/lib)
+      set(jags_PKG_CONFIG_PATH ${jags_HOME}/lib/pkgconfig/)
 
       # install-jaspMetaAnalysis.R needs to be reconfigured again
       configure_file(${INSTALL_MODULE_TEMPLATE_FILE}
-                     ${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R)
+                     ${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R @ONLY)
 
       # ----- Downloading and Building jags
 
@@ -364,17 +386,17 @@ if(INSTALL_R_MODULES)
 
         add_custom_command(
           WORKING_DIRECTORY ${jags_SOURCE_DIR}
-          OUTPUT ${R_OPT_PATH}/jags/lib/libjags.dylib
+          OUTPUT ${jags_HOME}/lib/pkgconfig/jags.pc
           COMMAND ${ACLOCAL}
           COMMAND ${AUTORECONF} -fi
           COMMAND ./configure --disable-dependency-tracking
-                  --prefix=${R_OPT_PATH}/jags
+                  --prefix=${jags_HOME}
           COMMAND ${MAKE}
           COMMAND ${MAKE} install
           COMMAND
             ${CMAKE_COMMAND} -D
-            NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
-            -D PATH=${R_OPT_PATH}/jags -D R_HOME_PATH=${R_HOME_PATH} -D
+            NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+            -D PATH=${jags_HOME} -D R_HOME_PATH=${R_HOME_PATH} -D
             R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake
           COMMENT "----- Preparing 'jags'")
 

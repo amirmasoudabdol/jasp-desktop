@@ -14,6 +14,8 @@ include(ExternalProject)
 include(CMakePrintHelpers)
 include(Tools/cmake/CPM.cmake)
 
+include(Checks.cmake)
+
 find_package(Git)
 find_program(MAKE NAMES gmake nmake make)
 find_program(ACLOCAL NAMES aclocal)
@@ -53,7 +55,7 @@ set(CURRENT_R_VERSION ${R_VERSION_MAJOR_MINOR})
 
 # - [ ] This needs to be removed. We don't necessary need it, and
 #       for now, it is here for testing
-set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/Install)
+# set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/Install)
 # message(STATUS ${CMAKE_INSTALL_PREFIX})
 
 # When everything is done, we should be able to just activate
@@ -131,6 +133,22 @@ option(
   "Indicates whether CMake should take care of the dependencies like 'Boost', 'jsoncpp', etc."
   OFF)
 option(BUILD_TESTS "Whether to build the test suits" OFF)
+option(LINUX_LOCAL_BUILD "Whether we are building inside the Build folder" OFF)
+option(FLATPAK_USED "Whether we are building for Flatpak" OFF)
+
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+  set(FLATPAK_USED ON)
+endif()
+
+if(LINUX_LOCAL_BUILD)
+  set(FLATPAK_USED OFF)
+  message(STATUS "JASP will be configured for local testing")
+  message(WARNING "In this mode, JASP configures a local R/library; however this cannot be used for installing JASP. If you wish to install JASP (e.g., on Flatpak), you must diabled this flag.")
+endif()
+
+if(INSTALL_R_MODULES AND (GITHUB_PAT STREQUAL ""))
+  message(WARNING "You probably need to set the GITHUB_PAT; otherwise CMAKE cannot effectively communicate with GitHub.")
+endif()
 
 if(CCACHE_EXECUTABLE
    AND USE_CCACHE
