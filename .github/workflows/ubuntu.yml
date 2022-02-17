@@ -17,14 +17,9 @@ jobs:
       - name: Qt Requirements
         run: |
           sudo apt update
-      - uses: jurplel/install-qt-action@v2
-        with:
-          version: ${{ matrix.qt-version }}
-          install-deps: 'true'
-          setup-python: 'true'
-          modules: 'qtwebengine qtwebglplugin'
+          brew install qt
       - name: Dependencies
-        run: sudo apt install build-essential jsoncpp mercurial gfortran-10 flex bison r-base libboost-all-dev cmake libarchive-dev zlibc libzstd-dev python3
+        run: sudo apt install build-essential jsoncpp mercurial gfortran-9 gfortran-10 flex bison r-base libboost-all-dev cmake libarchive-dev zlibc libzstd-dev
       - uses: actions/checkout@v2
       - name: Configure
         run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=ON -DLINUX_LOCAL_BUILD=ON -DINSTALL_R_MODULES=ON
