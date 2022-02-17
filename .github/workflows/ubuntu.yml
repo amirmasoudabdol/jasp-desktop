@@ -18,9 +18,9 @@ jobs:
         run: |
           sudo apt update
           brew upgrade
-          brew install qt jsoncpp boost libarchive libiconv bison flex
+          brew install qt jsoncpp boost libarchive libiconv --verbose
       - name: Dependencies
-        run: sudo apt-get -y install build-essential mercurial gfortran-9 gfortran-10 flex bison r-base cmake libarchive-dev zlibc libzstd-dev
+        run: sudo apt-get -y install build-essential mercurial gfortran-9 gfortran-10 flex bison r-base cmake libarchive-dev zlibc libzstd-dev bison flex
       - uses: actions/checkout@v2
       - name: Configure
         run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_JASP_REQUIRED_LIBRARIES=ON -DLINUX_LOCAL_BUILD=ON -DINSTALL_R_MODULES=ON
