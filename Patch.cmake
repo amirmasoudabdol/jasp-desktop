@@ -164,6 +164,11 @@ else()
         WORKING_DIRECTORY ${PATH}
         COMMAND install_name_tool -id "${NEW_ID}" "${FILE}")
 
+      execute_process(
+        COMMAND_ECHO STDOUT
+        WORKING_DIRECTORY ${PATH}
+        COMMAND otool -L "${FILE}")
+
       # Signing the library
       message(STATUS "4")
       execute_process(
@@ -172,6 +177,11 @@ else()
         WORKING_DIRECTORY ${PATH}
         COMMAND codesign --force --sign
                 "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)" "${FILE}")
+
+      execute_process(
+        COMMAND_ECHO STDOUT
+        WORKING_DIRECTORY ${PATH}
+        COMMAND spctl -a -vvv --raw "${FILE}")
 
       file(WRITE ${DIRECTORY_NAME}/${FILE_NAME}.patched.log "")
       message(CHECK_PASS "successful.")
