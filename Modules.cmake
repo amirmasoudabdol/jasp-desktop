@@ -144,14 +144,14 @@ if(INSTALL_R_MODULES)
   file(
     WRITE ${MODULES_RENV_ROOT_PATH}/install-jaspBase.R
     "
-    # install.packages(c('ggplot2', 'gridExtra', 'gridGraphics',
-    #                     'jsonlite', 'modules', 'officer', 'pkgbuild',
-    #                     'plyr', 'qgraph', 'ragg', 'R6', 'renv',
-    #                     'rjson', 'rvg', 'svglite', 'systemfonts',
-    #                     'withr', 'testthat',
-    #                     'data.table', 'httr', 'lifecycle',
-    #                     'pkgload', 'remotes', 'stringi', 'stringr',
-    #                     'vdiffr'), type='${R_PKG_TYPE}', repos='${R_REPOSITORY}' ${USE_LOCAL_R_LIBS_PATH})
+    install.packages(c('ggplot2', 'gridExtra', 'gridGraphics',
+                        'jsonlite', 'modules', 'officer', 'pkgbuild',
+                        'plyr', 'qgraph', 'ragg', 'R6', 'renv',
+                        'rjson', 'rvg', 'svglite', 'systemfonts',
+                        'withr', 'testthat',
+                        'data.table', 'httr', 'lifecycle',
+                        'pkgload', 'remotes', 'stringi', 'stringr',
+                        'vdiffr'), type='${R_PKG_TYPE}', repos='${R_REPOSITORY}' ${USE_LOCAL_R_LIBS_PATH})
     install.packages('${PROJECT_SOURCE_DIR}/Engine/jaspBase/', type='source', repos=NULL ${USE_LOCAL_R_LIBS_PATH})
     if ('jaspBase' %in% installed.packages()) {
       cat(NULL, file='${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log')
