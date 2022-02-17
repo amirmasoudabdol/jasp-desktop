@@ -17,7 +17,8 @@ jobs:
       - name: Qt Requirements
         run: |
           sudo apt update
-          brew install qt jsoncpp boost zlib libarchive libiconv openssl bison flex
+          brew upgrade
+          brew install qt jsoncpp boost libarchive libiconv bison flex
       - name: Dependencies
         run: sudo apt-get -y install build-essential mercurial gfortran-9 gfortran-10 flex bison r-base cmake libarchive-dev zlibc libzstd-dev
       - uses: actions/checkout@v2
