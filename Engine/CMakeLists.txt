@@ -24,9 +24,20 @@ target_include_directories(
          $<$<BOOL:${USE_CONAN}>:${CONAN_INCLUDE_DIRS_BOOST}>
          $<$<BOOL:${USE_CONAN}>:${CONAN_INCLUDE_DIRS_JSONCPP}>)
 
+
+if(WIN32)
+  # find_library(_LIB_R_INTERFACE
+  #   PATHS C:/Users/jasps/Developer/jasp-desktop/build-R-Interface-MinGW_for_R_Interface-Debug
+  #   NAMES "R-Interface"
+  #   REQUIRED)
+  set(_LIB_R_INTERFACE "C:/Users/jasps/Developer/jasp-desktop/build-R-Interface-MinGW_for_R_Interface-Debug/libR-Interface.dll.a")
+endif()
+
+
 target_link_libraries(
   JASPEngine
   PUBLIC Common
+         $<$<PLATFORM_ID:Windows>:${_LIB_R_INTERFACE}>
          $<$<NOT:$<PLATFORM_ID:Windows>>:R-Interface>
          #
          $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::nowide>
