@@ -18,7 +18,6 @@ bison/3.7.6
 
 [generators]
 cmake
-cmake_paths
 
-#[options]
-#bison:fPIC=False
+# [options]
+# bison:fPIC=False

@@ -31,8 +31,11 @@ if(WIN32)
   #   NAMES "R-Interface"
   #   REQUIRED)
   set(_LIB_R_INTERFACE "C:/Users/jasps/Developer/jasp-desktop/build-R-Interface-MinGW_for_R_Interface-Debug/libR-Interface.dll.a")
+
+  set(CMAKE_MSVCIDE_RUN_PATH "C:/Users/jasps/Developer/jasp-desktop/build-R-Interface-MinGW_for_R_Interface-Debug;C:/Users/jasps/Developer/build-jasp-desktop-Desktop_Qt_6_3_0_MSVC2019_64bit-Debug/R/bin/x64;C:/msys64/mingw64/bin")
 endif()
 
+# message(FATAL_ERROR ${CMAKE_SYSTEM_LIBRARY_PATH})
 
 target_link_libraries(
   JASPEngine
