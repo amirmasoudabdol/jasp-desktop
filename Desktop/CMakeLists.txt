@@ -108,9 +108,9 @@ else()
   endif()
 
   add_custom_target(
-    Resources
+    Resources ALL
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy Resources ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory Resources ${CMAKE_BINARY_DIR}/Resources
     BYPRODUCTS ${CMAKE_BINARY_DIR}/Resources)
 
   add_dependencies(JASP Resources)
@@ -135,7 +135,7 @@ endif()
 
 target_include_directories(
   JASP PUBLIC ${LIBREADSTAT_INCLUDE_DIRS}
-              "C:/msys64/mingw64/include/readstat.h"
+              $<$<PLATFORM_ID:Windows>:${MINGW_LIBREADSTAT_H}>
               ${PROJECT_SOURCE_DIR}/Common
               ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder)
 
@@ -171,7 +171,7 @@ target_link_libraries(
     $<$<BOOL:${USE_CONAN}>:CONAN_PKG::libiconv>
     # Based on our config, this is either from PkgConfig, or the build/_deps/
     ${LIBREADSTAT_LINK_LIBRARIES}
-    "C:/msys64/mingw64/lib/libreadstat.dll.a"
+    $<$<PLATFORM_ID:Windows>:${MINGW_LIBREADSTAT}>
     # System
     ${Iconv_LIBRARIES}
     ${ZLIB_LIBRARIES} # Needed for libreadstat.a

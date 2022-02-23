@@ -1,26 +1,24 @@
-# list(APPEND CMAKE_MESSAGE_CONTEXT R-Interface)
+list(APPEND CMAKE_MESSAGE_CONTEXT R-Interface)
 
-# if (WIN32)
+if (WIN32)
 
 
   cmake_minimum_required(VERSION 3.21)
 
-
   set(QT_CREATOR_SKIP_CONAN_SETUP ON)
-
-  # set(CMAKE_TOOLCHAIN_FILE C:/Users/jasps/Developer/jasp-desktop/R-Interface/R-Interface.toolchain.cmake)
  
   project(R-Interface
     VERSION 11.5.0.0
     LANGUAGES C CXX)
 
   list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../Tools/CMake")
-  # set(CMAKE_C_COMPILER "C:/rtools40/mingw64/bin/gcc.exe")
-  # set(CMAKE_CXX_COMPILER "C:/rtools40/mingw64/bin/g++.exe")
 
-
+  set(MINGW_PATH "C:/msys64/mingw64")
   set(JASP_SOURCE_DIR "${CMAKE_SOURCE_DIR}/..")
-  set(JASP_BINARY_DIR "${CMAKE_SOURCE_DIR}/../build")
+  set(JASP_BINARY_DIR "${CMAKE_SOURCE_DIR}/../../build-jasp-desktop-Desktop_Qt_6_3_0_MSVC2019_64bit-Debug")
+  if(NOT EXISTS ${JASP_BINARY_DIR})
+    message(FATAL_ERROR "Please set the correct Path to the JASP build folder, e.g., 'C:/path/to/build-jasp-desktop-Desktop_Qt_6_3_0_MSVC2019_64bit-Debug'")
+  endif()
 
   set(R_HOME_PATH "${JASP_BINARY_DIR}/R")
   set(R_BIN_PATH "${R_HOME_PATH}/bin")
@@ -33,16 +31,10 @@
   set(RCPP_PATH "${R_LIBRARY_PATH}/Rcpp")
   set(RINSIDE_PATH "${R_LIBRARY_PATH}/RInside")
 
-  # message(STATUS ${R_INCLUDE_PATH})
-  # message(STATUS ${RCPP_PATH})
-  # message(FATAL_ERROR ${RINSIDE_PATH})
-
-
   include(FetchContent)
   include(ExternalProject)
 
   # include(Conan)
-
 
   # set(USE_CONAN OFF)
   # set(RInterface ON)
@@ -73,7 +65,20 @@
   #   message(FATAL_ERROR "Something is wrong!")
   # endif()
 
-  set(_LIB_R "C:/Users/jasps/Developer/jasp-desktop/R-Interface/../build/R/bin/x64/R.dll")
+  message(CHECK_START "Looking for R.dll")
+  set(_LIB_R_PATH ${JASP_BINARY_DIR}/R)
+  find_file(_LIB_R
+    NAMES R.dll
+    PATHS ${_LIB_R_PATH}/bin
+    PATH_SUFFIXES x64 x32)
+
+  if(_LIB_R)
+    message(CHECK_PASS "found.")
+    message(STATUS "  ${_LIB_R}")
+  else()
+    message(CHECK_FAIL "not found in ${_LIB_R_PATH}/bin/x64")
+    message(FATAL_ERROR "R.dll is required for building R-Interface.")
+  endif()
 
   message(CHECK_START "Checking for 'libRInside'")
   find_library(
@@ -88,21 +93,11 @@
     message(STATUS "  ${_LIB_RINSIDE}")
   else()
     message(CHECK_FAIL "not found in ${RINSIDE_PATH}/lib")
-    message(FATAL_ERROR "Something is wrong!")
+    message(FATAL_ERROR "libRInside is required for building ")
   endif()
 
-# find_package(
-#   Boost REQUIRED
-#   COMPONENTS nowide
-#              filesystem
-#              system
-#              date_time
-#              timer
-#              chrono)
-
-
   find_package(jsoncpp REQUIRED)
-  find_library(_LIB_JSONCPP
+  find_file(_LIB_JSONCPP
     NAMES libjsoncpp
     PATHS ${MINGW_PATH}/bin
     REQUIRED)
@@ -131,7 +126,7 @@
            ${RCPP_PATH}/include
            ${RINSIDE_PATH}/include
            # Boost
-           "C:/msys64/mingw64/include")
+           ${MINGW_PATH}/include)
 
   target_link_libraries(
     R-Interface
@@ -143,7 +138,7 @@
            # Boost::chrono
            # CPM/CMake
            # ${LIBJSONCPP_LINK_LIBRARIES}
-           "C:/msys64/mingw64/bin/libjsoncpp-24.dll"
+           ${_LIB_JSONCPP}
            # ${jsoncpp_LIBRARIES}
            # jsoncpp::jsoncpp
            # jsoncpp::jsoncpp_lib
@@ -154,6 +149,67 @@
            # R
            ${_LIB_RINSIDE}
            $<$<NOT:$<PLATFORM_ID:Darwin>>:${_LIB_R}>
+           $<$<PLATFORM_ID:Darwin>:${_R_Framework}>
+           #
+           $<$<BOOL:${JASP_USES_QT_HERE}>:Qt::Core>)
+
+  target_compile_definitions(
+    R-Interface
+    PUBLIC JASP_R_INTERFACE_LIBRARY
+           QT_NO_DEPRECATED_WARNINGS
+           $<$<BOOL:${JASP_USES_QT_HERE}>:JASP_USES_QT_HERE>
+           $<$<BOOL:${PRINT_ENGINE_MESSAGES}>:PRINT_ENGINE_MESSAGES>)
+
+  target_compile_definitions(
+    R-Interface
+    PUBLIC BOOST_INTERPROCESS_BOOTSTAMP_IS_SESSION_MANAGER_BASED
+           BOOST_USE_WINDOWS_H
+           NOMINMAX
+           WIN32_LEAN_AND_MEAN)
+
+  add_custom_target(Transfer-R-Interface-To-JASP ALL
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy libR-Interface.a ${JASP_BINARY_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E copy libR-Interface.dll ${JASP_BINARY_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E copy libR-Interface.dll.a ${JASP_BINARY_DIR}/bin
+    COMMENT "Copying R-Interface to the jasp-desktop build folder")
+  add_dependencies(Transfer-R-Interface-To-JASP R-Interface)
+
+else()
+
+  file(GLOB SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/jaspResults/src/*.cpp")
+  list(APPEND SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/jasprcpp.cpp")
+
+  add_library(R-Interface ${HEADER_FILES} ${SOURCE_FILES})
+
+  target_include_directories(
+    R-Interface
+    PUBLIC # JASP
+           jaspResults
+           ${PROJECT_SOURCE_DIR}/Common
+           ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder
+           ${LIBJSONCPP_INCLUDE_DIRS}
+           # R
+           ${R_INCLUDE_PATH}
+           ${RCPP_PATH}/include
+           ${RINSIDE_PATH}/include)
+
+  target_link_libraries(
+    R-Interface
+    PUBLIC $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::nowide>
+           $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::filesystem>
+           $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::system>
+           $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::date_time>
+           $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::timer>
+           $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::chrono>
+           # Conan
+           $<$<BOOL:${USE_CONAN}>:CONAN_PKG::boost>
+           $<$<BOOL:${USE_CONAN}>:CONAN_PKG::jsoncpp>
+           # CPM/CMake
+           ${LIBJSONCPP_LINK_LIBRARIES}
+           # R
+           ${_LIB_RINSIDE}
+           $<$<PLATFORM_ID:Linux>:${_LIB_R}>
            $<$<PLATFORM_ID:Darwin>:${_R_Framework}>
            #
            $<$<BOOL:${JASP_USES_QT_HERE}>:Qt::Core>)
@@ -182,72 +238,9 @@
 
   endif()
 
-# else()
+endif()
 
-#   file(GLOB SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/jaspResults/src/*.cpp")
-#   list(APPEND SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/jasprcpp.cpp")
+# Amir: There are some auxillary files here, and I guess I will take care of
+# them later
 
-#   add_library(R-Interface ${HEADER_FILES} ${SOURCE_FILES})
-
-#   target_include_directories(
-#     R-Interface
-#     PUBLIC # JASP
-#            jaspResults
-#            ${PROJECT_SOURCE_DIR}/Common
-#            ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder
-#            ${LIBJSONCPP_INCLUDE_DIRS}
-#            # R
-#            ${R_INCLUDE_PATH}
-#            ${RCPP_PATH}/include
-#            ${RINSIDE_PATH}/include)
-
-#   target_link_libraries(
-#     R-Interface
-#     PUBLIC $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::nowide>
-#            $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::filesystem>
-#            $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::system>
-#            $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::date_time>
-#            $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::timer>
-#            $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::chrono>
-#            # Conan
-#            $<$<BOOL:${USE_CONAN}>:CONAN_PKG::boost>
-#            $<$<BOOL:${USE_CONAN}>:CONAN_PKG::jsoncpp>
-#            # CPM/CMake
-#            ${LIBJSONCPP_LINK_LIBRARIES}
-#            # R
-#            ${_LIB_RINSIDE}
-#            $<$<PLATFORM_ID:Linux>:${_LIB_R}>
-#            $<$<PLATFORM_ID:Darwin>:${_R_Framework}>
-#            #
-#            $<$<BOOL:${JASP_USES_QT_HERE}>:Qt::Core>)
-
-#   target_compile_definitions(
-#     R-Interface
-#     PUBLIC JASP_R_INTERFACE_LIBRARY
-#            QT_NO_DEPRECATED_WARNINGS
-#            $<$<BOOL:${JASP_USES_QT_HERE}>:JASP_USES_QT_HERE>
-#            $<$<BOOL:${PRINT_ENGINE_MESSAGES}>:PRINT_ENGINE_MESSAGES>)
-
-#   if(IWYU_EXECUTABLE AND RUN_IWYU)
-#     set_target_properties(R-Interface PROPERTIES CXX_INCLUDE_WHAT_YOU_USE
-#                                                  ${IWYU_EXECUTABLE})
-#   endif()
-
-#   if(WIN32)
-#     target_compile_definitions(
-#       R-Interface
-#       PUBLIC BOOST_INTERPROCESS_BOOTSTAMP_IS_SESSION_MANAGER_BASED
-#              BOOST_USE_WINDOWS_H
-#              NOMINMAX
-#              WIN32_LEAN_AND_MEAN)
-#     # target_compile_options(R-Interface -Og -municode)
-#   elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-
-#   endif()
-
-# endif()
-
-# # Amir: There are some auxillary files here, and I guess I will take care of
-# # them later
-
-# list(POP_BACK CMAKE_MESSAGE_CONTEXT)
+list(POP_BACK CMAKE_MESSAGE_CONTEXT)

@@ -26,13 +26,21 @@ target_include_directories(
 
 
 if(WIN32)
-  # find_library(_LIB_R_INTERFACE
-  #   PATHS C:/Users/jasps/Developer/jasp-desktop/build-R-Interface-MinGW_for_R_Interface-Debug
-  #   NAMES "R-Interface"
-  #   REQUIRED)
-  set(_LIB_R_INTERFACE "C:/Users/jasps/Developer/jasp-desktop/build-R-Interface-MinGW_for_R_Interface-Debug/libR-Interface.dll.a")
+  set(R_INTERFACE_BINARY_DIR "${CMAKE_SOURCE_DIR}/build-R-Interface-MinGW_for_R_Interface-Debug")
+  
+  message(CHECK_START "Looking for libR-Interface.dll.a")
+  find_file(_LIB_R_INTERFACE
+    NAMES libR-Interface.dll.a
+    PATHS ${R_INTERFACE_BINARY_DIR}
+    REQUIRED)
 
-  set(CMAKE_MSVCIDE_RUN_PATH "C:/Users/jasps/Developer/jasp-desktop/build-R-Interface-MinGW_for_R_Interface-Debug;C:/Users/jasps/Developer/build-jasp-desktop-Desktop_Qt_6_3_0_MSVC2019_64bit-Debug/R/bin/x64;C:/msys64/mingw64/bin")
+  if(_LIB_R_INTERFACE)
+    message(CHECK_PASS "found")
+  else()
+    message(CHECK_FAIL "not found")
+    message(FATAL_ERROR "libR-Interface.dll.a is necessary for building JASP.")
+  endif()
+
 endif()
 
 # message(FATAL_ERROR ${CMAKE_SYSTEM_LIBRARY_PATH})
@@ -109,6 +117,17 @@ elseif(WIN32)
            WIN32_LEAN_AND_MEAN)
 
   target_link_libraries(JASPEngine PUBLIC ole32 oleaut32)
+
+  # These are mainly for R-Interface, and all build using the MinGW
+  add_custom_target(Copy-Required-Libraries-To-Bin ALL
+    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBGCC_S_SEH} ${CMAKE_BINARY_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBSTDCPP} ${CMAKE_BINARY_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBWINPTHREAD} ${CMAKE_BINARY_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJSONCPP} ${CMAKE_BINARY_DIR}/bin
+    )
+
+  add_dependencies(Copy-Required-Libraries-To-Bin JASPEngine)
+
 
 elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
 
