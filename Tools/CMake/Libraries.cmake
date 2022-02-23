@@ -121,6 +121,23 @@ endif()
 
 if(WIN32)
 
+  # R-Interface
+  set(R_INTERFACE_BINARY_DIR "${CMAKE_SOURCE_DIR}/build-R-Interface-MinGW_for_R_Interface-Debug")
+
+  if(NOT EXISTS ${R_INTERFACE_BINARY_DIR})
+    message(FATAL_ERROR "Please set the path to R-Interface build directory")
+  endif()
+
+  find_file(_LIB_R_INTERFACE_SHARED
+    NAMES libR-Interface.dll
+    PATHS ${R_INTERFACE_BINARY_DIR})
+
+  if(_LIB_R_INTERFACE_SHARED)
+    message(CHECK_PASS "found")
+  else()
+    message(CHECK_FAIL "not found")
+    message(FATAL_ERROR "libR-Interface.dll is necessary for building JASP.")
+  endif()
 
   # ReadStat
 
@@ -193,7 +210,6 @@ if(WIN32)
     message(FATAL_ERROR "MSYS2 and some of its libraries are required for building on Windows, please follow the build instruction before you continue.")
   endif()
   
-
   message(CHECK_START "Looking for libjsoncpp-24.dll")
   find_file(MINGW_LIBJSONCPP
     NAMES libjsoncpp-24.dll

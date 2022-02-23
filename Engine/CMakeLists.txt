@@ -26,15 +26,13 @@ target_include_directories(
 
 
 if(WIN32)
-  set(R_INTERFACE_BINARY_DIR "${CMAKE_SOURCE_DIR}/build-R-Interface-MinGW_for_R_Interface-Debug")
   
   message(CHECK_START "Looking for libR-Interface.dll.a")
-  find_file(_LIB_R_INTERFACE
+  find_file(_LIB_R_INTERFACE_STATIC
     NAMES libR-Interface.dll.a
-    PATHS ${R_INTERFACE_BINARY_DIR}
-    REQUIRED)
+    PATHS ${R_INTERFACE_BINARY_DIR})
 
-  if(_LIB_R_INTERFACE)
+  if(_LIB_R_INTERFACE_STATIC)
     message(CHECK_PASS "found")
   else()
     message(CHECK_FAIL "not found")
@@ -48,7 +46,7 @@ endif()
 target_link_libraries(
   JASPEngine
   PUBLIC Common
-         $<$<PLATFORM_ID:Windows>:${_LIB_R_INTERFACE}>
+         $<$<PLATFORM_ID:Windows>:${_LIB_R_INTERFACE_STATIC}>
          $<$<NOT:$<PLATFORM_ID:Windows>>:R-Interface>
          #
          $<$<NOT:$<BOOL:${USE_CONAN}>>:Boost::nowide>
@@ -120,10 +118,11 @@ elseif(WIN32)
 
   # These are mainly for R-Interface, and all build using the MinGW
   add_custom_target(Copy-Required-Libraries-To-Bin ALL
-    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBGCC_S_SEH} ${CMAKE_BINARY_DIR}/bin
-    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBSTDCPP} ${CMAKE_BINARY_DIR}/bin
-    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBWINPTHREAD} ${CMAKE_BINARY_DIR}/bin
-    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJSONCPP} ${CMAKE_BINARY_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBGCC_S_SEH} ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBSTDCPP} ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBWINPTHREAD} ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJSONCPP} ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy ${_LIB_R_INTERFACE_SHARED} ${CMAKE_BINARY_DIR}
     )
 
   add_dependencies(Copy-Required-Libraries-To-Bin JASPEngine)
