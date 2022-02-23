@@ -36,7 +36,7 @@ if(WIN32)
     message(CHECK_PASS "found")
   else()
     message(CHECK_FAIL "not found")
-    message(FATAL_ERROR "libR-Interface.dll.a is necessary for building JASP.")
+    # message(FATAL_ERROR "libR-Interface.dll.a is necessary for building JASP.")
   endif()
 
 endif()
