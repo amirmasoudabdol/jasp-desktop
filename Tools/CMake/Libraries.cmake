@@ -128,6 +128,7 @@ if(WIN32)
     message(FATAL_ERROR "Please set the path to R-Interface build directory")
   endif()
 
+  message(CHECK_START "Looking for libR-Interface.dll")
   find_file(_LIB_R_INTERFACE_SHARED
     NAMES libR-Interface.dll
     PATHS ${R_INTERFACE_BINARY_DIR})
