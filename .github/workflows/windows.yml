@@ -39,7 +39,7 @@ jobs:
         run: |
           pip install wheel setuptools
           pip install conan --upgrade
-          conan
+          conan --version
       - name: Configuring Conan Profile
         run: |
           conan profile new default --detect
