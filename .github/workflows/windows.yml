@@ -53,16 +53,6 @@ jobs:
       - name: Configuring Conan
         run: conan install .
       - name: Pre-configuring the JASP Desktop
-        run: cmake -S . -B build -DGITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DGITHUB_ACTION_BUILD=ON -DINSTALL_R_MODULES=ON -DCONAN_DISABLE_CHECK_COMPILER=ON -DCMAKE_PREFIX_PATH="$Qt6_DIR"
-      - name: Configuring R-Interface
-        run: |
-          cd R-Interface
-          cmake -S . -B build -D -DJASP_BINARY_DIR=../build
-      - name: Building R-Interface
-        run: |
-          cmake --build build
-          cd ..
-      - name: Re-configuring JASP Desktop
-        run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DGITHUB_ACTION_BUILD=OFF -DINSTALL_R_MODULES=ON -DR_INTERFACE_BINARY_DIR=R-Interface/build
+        run: cmake -S . -B build -DGITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_R_MODULES=ON -DCONAN_DISABLE_CHECK_COMPILER=ON -DCMAKE_PREFIX_PATH="$Qt6_DIR/lib/cmake/Qt6"
       - name: Building JASP
         run: cmake --build build
