@@ -42,18 +42,8 @@ jobs:
 
       - name: Install Conan
         uses: turtlebrowser/get-conan@main
+      - name: Conan version
+        run: echo "${{ steps.conan.outputs.version }}"
       - uses: actions/checkout@v2
       - name: Configuring Conan
         run: conan install . --build=missing
-      # - name: Configuring JASP Desktop
-      #   run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_R_MODULES=OFF -DR_INTERFACE_BINARY_DIR=R-Interface/build
-      # - name: Configuring R-Interface
-      #   run: |
-      #     cd R-Interface
-      #     cmake -S . -B build -D -DJASP_BINARY_DIR=../build
-      # - name: Building R-Interface
-      #   run: cmake --build build
-      # - name: Building JASP Desktop
-      #   run: |
-      #     cd ..
-      #     cmake --build build
