@@ -27,23 +27,3 @@ jobs:
             libiconv
             libtool
             mercurial
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v2
-        with:
-          version: '6.2'
-          host: 'windows'
-          target: 'desktop'
-          arch: 'win64_msvc2019_64'
-          dir: '${{ github.workspace }}/'
-          install-deps: 'true'
-          modules: 'qtcharts qtwebengine'
-          cached: 'false'
-          set-env: 'true'
-
-      - name: Install Conan
-        run: pip install conan
-      - name: Conan version
-        run: conan --version
-      - uses: actions/checkout@v2
-      - name: Configuring Conan
-        run: conan install . --build=missing
