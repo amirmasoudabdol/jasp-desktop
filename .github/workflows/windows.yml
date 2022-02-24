@@ -28,6 +28,7 @@ jobs:
           pip install wheel setuptools
           pip install conan --upgrade
       - name: Configuring Conan Profile
+        run: |
           conan profile new default --detect
           conan profile show default
       - uses: actions/checkout@v2
