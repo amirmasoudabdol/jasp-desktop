@@ -11,6 +11,18 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v2
+        with:
+          version: '6.2'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64'
+          dir: '${{ github.workspace }}/'
+          install-deps: 'true'
+          modules: 'qtcharts qtwebengine'
+          cached: 'false'
+          set-env: 'true'
       - uses: msys2/setup-msys2@v2
         name: Preparing the MSYS2 Environment
         with:
@@ -38,4 +50,18 @@ jobs:
       - uses: actions/checkout@v2
         name: Cloning JASP
       - name: Configuring Conan
-        run: conan info .
+        run: conan install .
+      - name: Pre-configuring the JASP Desktop
+        run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DGITHUB_ACTION_BUILD=ON -DINSTALL_R_MODULES=ON
+      - name: Configuring R-Interface
+        run: |
+          cd R-Interface
+          cmake -S . -B build -D -DJASP_BINARY_DIR=../build
+      - name: Building R-Interface
+        run: |
+          cmake --build build
+          cd ..
+      - name: Re-configuring JASP Desktop
+        run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DGITHUB_ACTION_BUILD=OFF -DINSTALL_R_MODULES=ON -DR_INTERFACE_BINARY_DIR=R-Interface/build
+      - name: Building JASP
+        run: cmake --build build
