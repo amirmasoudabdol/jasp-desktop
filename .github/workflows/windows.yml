@@ -23,18 +23,6 @@ jobs:
             flex
             libtool
             mercurial
-      # - name: Install Qt
-      #   uses: jurplel/install-qt-action@v2
-      #   with:
-      #     version: '6.2.3'
-      #     host: 'windows'
-      #     target: 'desktop'
-      #     arch: 'win64_msvc2019_64'
-      #     dir: '${{ github.workspace }}/'
-      #     install-deps: 'true'
-      #     modules: 'qtcharts qtwebengine'
-      #     cached: 'false'
-      #     set-env: 'true'
       - name: Installing Conan
         run: |
           pip install wheel setuptools
