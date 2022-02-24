@@ -23,11 +23,11 @@ jobs:
             flex
             libtool
             mercurial
-        shell: msys2 {0}
+      - shell: msys2 {0}
         run: |
           uname -a
           pacman -Q
-        shell: powershell
+      - shell: powershell
         run: msys2 -c 'uname -a'
-        shell: cmd
+      - shell: cmd
         run: msys2 -c 'uname -a'
