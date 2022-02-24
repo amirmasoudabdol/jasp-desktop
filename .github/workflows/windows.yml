@@ -36,9 +36,9 @@ jobs:
           cached: 'false'
           set-env: 'true'
       - name: Install Conan
-        uses: turtlebrowser/get-conan@main
-      - name: Conan version
-        run: echo "${{ steps.conan.outputs.version }}"
+        run: |
+          pip install wheel setuptools
+          pip install conan --upgrade
       - uses: actions/checkout@v2
         name: Cloning JASP
       - name: Configuring Conan
