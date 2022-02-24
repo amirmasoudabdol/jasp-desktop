@@ -39,6 +39,7 @@ jobs:
         run: |
           pip install wheel setuptools
           pip install conan --upgrade
+          conan
       - name: Configuring Conan Profile
         run: |
           conan profile new default --detect
@@ -52,7 +53,7 @@ jobs:
       - name: Configuring Conan
         run: conan install .
       - name: Pre-configuring the JASP Desktop
-        run: cmake -S . -B build -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DGITHUB_ACTION_BUILD=ON -DINSTALL_R_MODULES=ON
+        run: cmake -S . -B build -DGITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DGITHUB_ACTION_BUILD=ON -DINSTALL_R_MODULES=ON -DCONAN_DISABLE_CHECK_COMPILER=ON
       - name: Configuring R-Interface
         run: |
           cd R-Interface
