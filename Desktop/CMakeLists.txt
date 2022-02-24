@@ -13,7 +13,8 @@ endif()
 # We can technically use these two lines to grab all *.h, and *.cpp files
 # but it think there are unused files.
 
-configure_file(${CMAKE_CURRENT_LIST_DIR}/utilities/appdirs.h.in ${CMAKE_CURRENT_LIST_DIR}/utilities/appdirs.h)
+configure_file(${CMAKE_CURRENT_LIST_DIR}/utilities/appdirs.h.in
+               ${CMAKE_CURRENT_LIST_DIR}/utilities/appdirs.h)
 message(STATUS "appdirs.h is successfully generated...")
 
 file(GLOB_RECURSE HEADER_FILES "${CMAKE_CURRENT_LIST_DIR}/*.h")
@@ -110,7 +111,8 @@ else()
   add_custom_target(
     Resources ALL
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy_directory Resources ${CMAKE_BINARY_DIR}/Resources
+    COMMAND ${CMAKE_COMMAND} -E copy_directory Resources
+            ${CMAKE_BINARY_DIR}/Resources
     BYPRODUCTS ${CMAKE_BINARY_DIR}/Resources)
 
   add_dependencies(JASP Resources)
@@ -130,14 +132,15 @@ if(INSTALL_R_MODULES)
 endif()
 
 if(INSTALL_JASP_REQUIRED_LIBRARIES)
-  add_dependencies(JASP readstat-install)
+  add_dependencies(JASP readstat)
 endif()
 
 target_include_directories(
-  JASP PUBLIC ${LIBREADSTAT_INCLUDE_DIRS}
-              $<$<PLATFORM_ID:Windows>:${MINGW_LIBREADSTAT_H}>
-              ${PROJECT_SOURCE_DIR}/Common
-              ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder)
+  JASP
+  PUBLIC ${LIBREADSTAT_INCLUDE_DIRS}
+         $<$<PLATFORM_ID:Windows>:${MINGW_LIBREADSTAT_H}>
+         ${PROJECT_SOURCE_DIR}/Common
+         ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder)
 
 target_link_libraries(
   JASP
@@ -170,7 +173,7 @@ target_link_libraries(
     $<$<BOOL:${USE_CONAN}>:CONAN_PKG::openssl>
     $<$<BOOL:${USE_CONAN}>:CONAN_PKG::libiconv>
     # Based on our config, this is either from PkgConfig, or the build/_deps/
-    ${LIBREADSTAT_LINK_LIBRARIES}
+    ${_LIB_READSTAT}
     $<$<PLATFORM_ID:Windows>:${MINGW_LIBREADSTAT}>
     # System
     ${Iconv_LIBRARIES}

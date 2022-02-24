@@ -18,9 +18,3 @@ bison/3.7.6
 
 [generators]
 cmake
-
-[imports]
-bin, *.dll -> ./bin
-
-# [options]
-# bison:fPIC=False
