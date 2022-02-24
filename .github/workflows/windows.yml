@@ -17,8 +17,8 @@ jobs:
           msystem: mingw64
           update: true
           install: >-
-            boost
-            jsoncpp
+            mingw-w64-x86_64-boost
+            mingw-w64-x86_64-jsoncpp
             bison
             flex
             libtool
