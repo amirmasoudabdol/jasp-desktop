@@ -41,12 +41,9 @@ jobs:
       - uses: actions/checkout@v2
         name: Cloning JASP
       - name: Configuring Conan
-        run: conan install .
-      - name: Configuring Conan for Qt
         run: |
-          conan remote add qt https://qtpkgtest.jfrog.io/artifactory/api/conan/qt
-          conan user -p ${{ secrets.QT_CONAN_REMOTE_PASSWORD }} -r qt ${{ secrets.QT_CONAN_REMOTE_USERNAME }}
-          conan install conanfile.qt.txt --build=missing --update --generator=virtualenv -r qt
+          conan install .
+          conan install conanfile.qt.txt
       - name: Pre-configuring the JASP Desktop
         run: cmake -S . -B build -DGITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_R_MODULES=ON -DCONAN_DISABLE_CHECK_COMPILER=ON
       - name: Building JASP
