@@ -8,20 +8,12 @@ on:
 jobs:
   qt:
     name: Windows Build
+    if: false
     runs-on: windows-latest
+    env:
+      CONAN_REVISIONS_ENABLED: 1
 
     steps:
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v2
-        with:
-          version: '6.2.3'
-          host: 'windows'
-          target: 'desktop'
-          arch: 'win64_msvc2019_64'
-          install-deps: 'true'
-          modules: 'qtcharts qtwebengine'
-          cached: 'false'
-          set-env: 'true'
       - uses: msys2/setup-msys2@v2
         name: Preparing the MSYS2 Environment
         with:
@@ -51,6 +43,11 @@ jobs:
         name: Cloning JASP
       - name: Configuring Conan
         run: conan install .
+      - name: Configuring Conan for Qt
+        run: |
+          conan remote add qt https://qtpkgtest.jfrog.io/artifactory/api/conan/qt
+          conan user -p ${{ secrets.QT_CONAN_REMOTE_PASSWORD }} -r qt ${{ secrets.QT_CONAN_REMOTE_USERNAME }}
+          conan install conanfile.qt.txt --build=missing --update --generator=virtualenv -r qt
       - name: Pre-configuring the JASP Desktop
         run: cmake -S . -B build -DGITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DINSTALL_R_MODULES=ON -DCONAN_DISABLE_CHECK_COMPILER=ON
       - name: Building JASP
