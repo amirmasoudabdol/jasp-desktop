@@ -222,7 +222,7 @@ if(APPLE)
         execute_process(
           COMMAND_ECHO STDOUT
           # ERROR_QUIET OUTPUT_QUIET
-          TIMEOUT 30
+          TIMEOUT 60
           WORKING_DIRECTORY ${R_HOME_PATH}
           COMMAND
             codesign --force --verbose --deep ${CODESIGN_TIMESTAMP_FLAG} --sign
@@ -230,11 +230,12 @@ if(APPLE)
             "${R_HOME_PATH}/bin/exec/R"
           RESULT_VARIABLE SIGNING_RESULT
           OUTPUT_VARIABLE SIGNING_OUTPUT
-          ERROR_VARIABLE SIGNING_ERROR)
+          ERROR_VARIABLE SIGNING_ERROR
+          OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_STRIP_TRAILING_WHITESPACE)
 
-        message(STATUS "${SIGNING_RESULT}")
-        message(STATUS "${SIGNING_OUTPUT}")
-        message(STATUS "${SIGNING_ERROR}")
+        message(STATUS "SIGNING_RESULT: ${SIGNING_RESULT}")
+        message(STATUS "SIGNING_OUTPUT: ${SIGNING_OUTPUT}")
+        message(STATUS "SIGNING_ERROR:  ${SIGNING_ERROR}")
       endwhile()
 
       if(NOT (SIGNING_RESULT STREQUAL "timeout"))
