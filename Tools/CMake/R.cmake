@@ -243,6 +243,11 @@ if(APPLE)
         message(CHECK_FAIL "unsuccessful")
       endif()
 
+      execute_process(WORKING_DIRECTORY ${R_HOME_PATH} COMMAND spctl -a -vvv
+                                                               bin/exec/R)
+
+      execute_process(WORKING_DIRECTORY ${R_HOME_PATH} COMMAND ./R RHOME)
+
       execute_process(
         # COMMAND_ECHO STDOUT
         ERROR_QUIET OUTPUT_QUIET
