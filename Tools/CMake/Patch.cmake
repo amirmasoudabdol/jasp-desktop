@@ -239,8 +239,9 @@ else()
             ERROR_QUIET OUTPUT_QUIET
             TIMEOUT 30
             WORKING_DIRECTORY ${PATH}
-            COMMAND codesign --deep --force ${CODESIGN_TIMESTAMP_FLAG} --sign
-                    "${APPLE_CODESIGN_IDENTITY}" --options runtime "${FILE}"
+            COMMAND
+              /usr/bin/codesign --deep --force ${CODESIGN_TIMESTAMP_FLAG} --sign
+              "${APPLE_CODESIGN_IDENTITY}" --options runtime "${FILE}"
             RESULT_VARIABLE SIGNING_RESULT
             OUTPUT_VARIABLE SIGNING_OUTPUT)
         endwhile()

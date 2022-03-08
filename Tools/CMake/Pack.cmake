@@ -54,7 +54,7 @@ if(APPLE)
     COMMAND ${CMAKE_COMMAND} -E copy "${CPACK_DMG_VOLUME_NAME}"
             ${CMAKE_BINARY_DIR}/JASP/
     COMMAND
-      codesign --verbose --verify --deep --force --sign
+      /usr/bin/codesign --verbose --verify --deep --force --sign
       "${APPLE_CODESIGN_IDENTITY}" --options runtime
       "JASP/${CPACK_DMG_VOLUME_NAME}"
     COMMENT "------ Creating the ${CPACK_DMG_VOLUME_NAME}")
