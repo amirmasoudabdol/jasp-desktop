@@ -216,8 +216,8 @@ if(APPLE)
       message(CHECK_START "Signing '${R_HOME_PATH}/bin/exec/R'")
 
       set(SIGNING_RESULT "timeout")
-      while((${SIGNING_RESULT} STREQUAL "timeout") OR (${SIGNING_RESULT}
-                                                       STREQUAL "1"))
+      while((${SIGNING_RESULT} MATCHES "timeout") OR (${SIGNING_RESULT} STREQUAL
+                                                      "1"))
         message(STATUS "${SIGNING_RESULT}")
         execute_process(
           COMMAND_ECHO STDOUT
@@ -238,7 +238,7 @@ if(APPLE)
         message(STATUS "SIGNING_ERROR:  ${SIGNING_ERROR}")
       endwhile()
 
-      if(NOT (SIGNING_RESULT STREQUAL "timeout"))
+      if(NOT (SIGNING_RESULT MATCHES "timeout"))
         message(CHECK_PASS "successful")
       else()
         message(CHECK_FAIL "unsuccessful")
