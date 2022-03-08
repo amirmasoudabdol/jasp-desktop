@@ -187,7 +187,6 @@ else()
         message(STATUS "One of them: ${FILES}")
 
         if(R_DIR_NAME MATCHES "arm64")
-          message(STATUS "arm64")
 
           execute_process(
             # COMMAND_ECHO STDOUT
@@ -199,8 +198,6 @@ else()
           )
 
         else()
-
-          message(STATUS "x86_64")
 
           execute_process(
             # COMMAND_ECHO STDOUT
