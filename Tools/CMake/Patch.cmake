@@ -31,7 +31,15 @@ else()
     REGEX
     ".*dSYM*")
 
-  file(GLOB BINARIES "${PATH}/*/bin/*")
+  # file(GLOB BINARIES "${PATH}/*/bin/*")
+  # list(
+  #   FILTER
+  #   "${BINARIES}"
+  #   EXCLUDE
+  #   REGEX
+  #   ".*\\.patched\\.log.*")
+
+  # message(STATUS "HERE ARE BINARIES:\n ${BINARIES}")
 
   set(FILES "")
   list(
@@ -176,8 +184,11 @@ else()
       else()
 
         # Changing the `/opt/jags/lib` prefix
+        message(STATUS "One of them: ${FILES}")
 
-        if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
+        if(R_DIR_NAME MATCHES "arm64")
+          message(STATUS "arm64")
+
           execute_process(
             # COMMAND_ECHO STDOUT
             ERROR_QUIET OUTPUT_QUIET
@@ -188,6 +199,8 @@ else()
           )
 
         else()
+
+          message(STATUS "x86_64")
 
           execute_process(
             # COMMAND_ECHO STDOUT
