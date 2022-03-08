@@ -218,8 +218,9 @@ if(APPLE)
       set(SIGNING_RESULT "timeout")
       while((${SIGNING_RESULT} STREQUAL "timeout") OR (${SIGNING_RESULT}
                                                        STREQUAL "1"))
+        message(STATUS "${SIGNING_RESULT}")
         execute_process(
-          # COMMAND_ECHO STDOUT
+          COMMAND_ECHO STDOUT
           # ERROR_QUIET OUTPUT_QUIET
           TIMEOUT 30
           WORKING_DIRECTORY ${R_HOME_PATH}
@@ -230,6 +231,10 @@ if(APPLE)
           RESULT_VARIABLE SIGNING_RESULT
           OUTPUT_VARIABLE SIGNING_OUTPUT
           ERROR_VARIABLE SIGNING_ERROR)
+
+        message(STATUS "${SIGNING_RESULT}")
+        message(STATUS "${SIGNING_OUTPUT}")
+        message(STATUS "${SIGNING_ERROR}")
       endwhile()
 
       if(NOT (SIGNING_RESULT STREQUAL "timeout"))
