@@ -18,7 +18,6 @@
 #include "jasprcpp.h"
 #include "jaspResults/src/jaspResults.h"
 #include <fstream>
-#include "boost/nowide/system.hpp"
 
 static const	std::string NullString			= "null";
 static			std::string lastErrorMessage	= "";
@@ -163,6 +162,9 @@ void STDCALL jaspRCPP_init(const char* buildYear, const char* version, RBridgeCa
 	jaspResults::setBaseCitation(baseCitation);
 	jaspResults::setInsideJASP();
 
+	jaspRCPP_parseEvalQNT("library(methods)");
+	jaspRCPP_parseEvalQNT("library(jaspBase)");
+
 	jaspRCPP_logString("Initializing jaspResultsModule.\n");
 
 	rInside["jaspResultsModule"]			= givejaspResultsModule();
@@ -176,16 +178,22 @@ void STDCALL jaspRCPP_init(const char* buildYear, const char* version, RBridgeCa
 	jaspRCPP_parseEvalQNT("library(\"jaspBase\")");
 		
 	jaspRCPP_logString("Loading auxillary R-files.\n");
+
+#if defined _WIN32 || defined __MINGW32__
+	jaspRCPP_parseEvalQNT("source(file='Modules/writeImage.R')");
+	jaspRCPP_parseEvalQNT("source(file='Modules/zzzWrappers.R')");
+	jaspRCPP_parseEvalQNT("source(file='Modules/workarounds.R')");
+#else
 	jaspRCPP_parseEvalQNT("source(file='../Modules/writeImage.R')");
 	jaspRCPP_parseEvalQNT("source(file='../Modules/zzzWrappers.R')");
 	jaspRCPP_parseEvalQNT("source(file='../Modules/workarounds.R')");
+#endif
 
 	jaspRCPP_logString("initEnvironment().\n");
 	jaspRCPP_parseEvalQNT("initEnvironment()");
-
 	
 	_R_HOME = jaspRCPP_parseEvalStringReturn("R.home('')");
-	jaspRCPP_logString("R_HOME is: " + _R_HOME);
+	jaspRCPP_logString("R_HOME is: " + _R_HOME + "\n");
 	
 
 #ifdef __APPLE__

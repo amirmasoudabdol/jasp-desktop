@@ -1,59 +1,8 @@
 list(APPEND CMAKE_MESSAGE_CONTEXT Engine)
 
-find_package(LibArchive)
-if(NOT LibArchive_FOUND)
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(
-    LibArchive
-    REQUIRED
-    IMPORTED_TARGET
-    libarchive)
-endif()
+if(LINUX)
 
-set(Boost_USE_STATIC_LIBS ON)
-find_package(
-  Boost REQUIRED
-  COMPONENTS nowide
-             filesystem
-             system
-             date_time
-             timer
-             chrono)
-
-if(NOT INSTALL_JASP_REQUIRED_LIBRARIES)
-
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(
-    LIBJSONCPP
-    REQUIRED
-    IMPORTED_TARGET
-    jsoncpp)
-
-else()
-
-  # find_library(
-  #   LIBJSONCPP REQUIRED
-  #   NAMES jsoncpp
-  #   HINTS ${jsoncpp_LIBRARY_DIRS})
-
-  # WARNING: This is not the way to do it, and it does not work with Ninja :\
-
-  set(LIBJSONCPP_INCLUDE_DIRS ${jsoncpp_INCLUDE_DIRS})
-  set(LIBJSONCPP_LIBRARY_DIRS ${jsoncpp_LIBRARY_DIRS})
-  set(LIBJSONCPP_LINK_LIBRARIES ${jsoncpp_LIBRARY_DIRS}/libjsoncpp.a)
-
-endif()
-
-if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(
-    _LIB_R_PKG_CONFIG
-    # REQUIRED
-    IMPORTED_TARGET libR)
-
-  target_link_libraries(R-Interface PUBLIC ${_LIB_R_PKG_CONFIG_LIBRARIES}
-                                           /usr/include /usr/include/R)
+  target_link_libraries(R-Interface PUBLIC ${_LIB_R})
 
 endif()
 
@@ -63,42 +12,70 @@ file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/*.cpp")
 
 add_executable(JASPEngine ${HEADER_FILES} ${SOURCE_FILES})
 
-if(NOT WIN32)
-  add_dependencies(JASPEngine R-Interface)
-endif()
+# add_custom_command(
+#   TARGET JASPEngine
+#   POST_BUILD
+#   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/R-Interface
+#   DEPENDS
+#   ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
+#   ${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log
+#   ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different jaspResults/R/writeImage.R
+#           ${MODULES_BINARY_PATH}/
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different jaspResults/R/zzzWrappers.R
+#           ${MODULES_BINARY_PATH}/
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different R/workarounds.R
+#           ${MODULES_BINARY_PATH}/
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different R/symlinkTools.R
+#           ${MODULES_BINARY_PATH}/)
+
+# Note that on WIN32 this is going to invoke the external build of
+# the R-Interface. So, while I'm using the same name for these targets
+# they are not 100% the same!
+add_dependencies(JASPEngine R-Interface jaspBase)
 
 target_include_directories(
   JASPEngine
-  PUBLIC ${CONAN_INCLUDE_DIRS_JSONCPP} ${PROJECT_SOURCE_DIR}/R-Interface
-         ${PROJECT_SOURCE_DIR}/Common)
+  PUBLIC ${PROJECT_SOURCE_DIR}/R-Interface
+         ${PROJECT_SOURCE_DIR}/Common
+         # Conan
+         $<$<BOOL:${USE_CONAN}>:${CONAN_INCLUDE_DIRS_JSONCPP}>
+         #
+         ${Boost_INCLUDE_DIRS})
 
-if(NOT WIN32)
-  target_link_libraries(
-    JASPEngine
-    PUBLIC Common # includes jsoncpp, libarchive
-           R-Interface
-           #
-           Boost::nowide
-           Boost::filesystem
-           Boost::system
-           Boost::date_time
-           Boost::timer
-           Boost::chrono
-           # System
-           LibArchive::LibArchive)
-else()
-  target_link_libraries(
-    JASPEngine
-    PUBLIC Common # includes jsoncpp, libarchive
-           #
-           Boost::nowide
-           Boost::filesystem
-           Boost::system
-           Boost::date_time
-           Boost::timer
-           Boost::chrono
-           # System
-           LibArchive::LibArchive)
+if(WIN32)
+
+  message(CHECK_START "Setting path to libR-Interface.dll")
+  set(_LIB_R_INTERFACE_SHARED
+      ${CMAKE_BINARY_DIR}/R-Interface/libR-Interface.dll)
+  message(STATUS "  ${_LIB_R_INTERFACE_SHARED}")
+
+  message(CHECK_START "Setting path to libR-Interface.dll.a")
+  set(_LIB_R_INTERFACE_STATIC
+      ${CMAKE_BINARY_DIR}/R-Interface/libR-Interface.dll.a)
+  message(STATUS "  ${_LIB_R_INTERFACE_STATIC}")
+
+  message(STATUS "libR-Interface will be build if it is missing.")
+
+endif()
+
+target_link_libraries(
+  JASPEngine
+  PUBLIC Common
+         #
+         $<$<PLATFORM_ID:Windows>:${_LIB_R_INTERFACE_STATIC}>
+         $<$<NOT:$<PLATFORM_ID:Windows>>:R-Interface>
+         # Boost
+         Boost::filesystem
+         Boost::system
+         Boost::date_time
+         Boost::timer
+         Boost::chrono
+         #
+         LibArchive::LibArchive)
+
+if(WINDOWS)
+  target_link_libraries(JASPEngine PUBLIC Boost::nowide)
 endif()
 
 if(IWYU_EXECUTABLE AND RUN_IWYU)
@@ -150,16 +127,36 @@ elseif(WIN32)
   target_compile_definitions(
     JASPEngine
     PUBLIC BOOST_INTERPROCESS_BOOTSTAMP_IS_SESSION_MANAGER_BASED
-           BOOST_USE_WINDOWS_H
+           BOOST_WINDOWS
            NOMINMAX
-           WIN32_LEAN_AND_MEAN)
+           WIN32_LEAN_AND_MEAN
+           )
 
   target_link_libraries(JASPEngine PUBLIC ole32 oleaut32)
 
-elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+  # These are mainly for R-Interface, and all build using the MinGW
+  add_custom_command(
+    TARGET JASPEngine
+    POST_BUILD DEPENDS ${CMAKE_BINARY_DIR}/R-Interface/libR-Interface.dll
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MINGW_LIBGCC_S_SEH}
+            ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MINGW_LIBSTDCPP}
+            ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MINGW_LIBWINPTHREAD}
+            ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MINGW_LIB_BOOST_NOWIDE}
+            ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MINGW_LIBJSONCPP}
+            ${CMAKE_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_LIB_R_INTERFACE_SHARED}
+            ${CMAKE_BINARY_DIR}
+    COMMENT "------ Re-installing the dependencies (if necessary)")
 
-  # target_link_libraries(JASPEngine
+elseif(LINUX)
+
+  # target_link_options(JASPEngine
   # PUBLIC rt)
+  # target_link_libraries(JASPEngine PUBLIC "-lrt")
 
 endif()
 

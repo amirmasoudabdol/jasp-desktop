@@ -1,83 +1,195 @@
 list(APPEND CMAKE_MESSAGE_CONTEXT R-Interface)
 
-file(GLOB SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/jaspResults/src/*.cpp")
-list(APPEND SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/jasprcpp.cpp")
-
-set(Boost_USE_STATIC_LIBS ON)
-find_package(
-  Boost REQUIRED
-  COMPONENTS nowide
-             filesystem
-             system
-             date_time
-             timer
-             chrono)
-
-add_library(R-Interface ${HEADER_FILES} ${SOURCE_FILES})
-
-if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(
-    _LIB_R_PKG_CONFIG
-    # REQUIRED
-    IMPORTED_TARGET libR)
-
-  # I think we need to deduct most information about R using the
-  # PkgConfig but for now, I'm doing it as minimal as possible
-  # to keep it consistent to other platforms
-  target_include_directories(
-    R-Interface PUBLIC ${_LIB_R_PKG_CONFIG_INCLUDE_DIRS} /usr/include
-                       /usr/include/R)
-
-endif()
-
-target_include_directories(
-  R-Interface
-  PUBLIC # JASP
-         jaspResults
-         ${PROJECT_SOURCE_DIR}/Common
-         ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder
-         ${LIBJSONCPP_INCLUDE_DIRS}
-         # R
-         ${R_HOME_PATH}/include
-         ${RCPP_PATH}/include
-         ${RINSIDE_PATH}/include)
-
-target_link_libraries(
-  R-Interface
-  PUBLIC Boost::nowide
-         Boost::filesystem
-         Boost::system
-         Boost::date_time
-         Boost::timer
-         Boost::chrono
-         $<$<PLATFORM_ID:Darwin>:${_R_Framework}>
-         $<$<PLATFORM_ID:Linux>:${_LIB_R}>
-         ${_LIB_RINSIDE}
-         $<$<BOOL:${JASP_USES_QT_HERE}>:Qt::Core>)
-
-target_compile_definitions(
-  R-Interface
-  PUBLIC JASP_R_INTERFACE_LIBRARY
-         QT_NO_DEPRECATED_WARNINGS
-         $<$<BOOL:${JASP_USES_QT_HERE}>:JASP_USES_QT_HERE>
-         $<$<BOOL:${PRINT_ENGINE_MESSAGES}>:PRINT_ENGINE_MESSAGES>)
-
-if(IWYU_EXECUTABLE AND RUN_IWYU)
-  set_target_properties(R-Interface PROPERTIES CXX_INCLUDE_WHAT_YOU_USE
-                                               ${IWYU_EXECUTABLE})
-endif()
-
 if(WIN32)
+
+  set(QT_CREATOR_SKIP_CONAN_SETUP ON)
+
+  cmake_minimum_required(VERSION 3.21)
+
+  project(
+    R-Interface
+    VERSION 11.5.0.0
+    LANGUAGES C CXX)
+
+  list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../Tools/CMake")
+
+  set(MINGW_PATH
+      "C:/msys64/mingw64"
+      CACHE PATH "Path to MinGW x64 folder")
+  set(JASP_SOURCE_DIR "${CMAKE_SOURCE_DIR}/..")
+  if(NOT EXISTS ${JASP_BINARY_DIR})
+    message(
+      FATAL_ERROR
+        "Please set the correct Path to the JASP build folder, e.g., 'C:/path/to/build-jasp-desktop-Desktop_Qt_6_3_0_MSVC2019_64bit-Debug'"
+    )
+  endif()
+
+  set(R_HOME_PATH "${JASP_BINARY_DIR}/R")
+  set(R_BIN_PATH "${R_HOME_PATH}/bin")
+  set(R_LIB_PATH "${R_HOME_PATH}/bin/${R_DIR_NAME}")
+  set(R_LIBRARY_PATH "${R_HOME_PATH}/library")
+  set(R_OPT_PATH "${R_HOME_PATH}/opt")
+  set(R_EXECUTABLE "${R_HOME_PATH}/bin/R")
+  set(R_INCLUDE_PATH "${R_HOME_PATH}/include")
+
+  set(RCPP_PATH "${R_LIBRARY_PATH}/Rcpp")
+  set(RINSIDE_PATH "${R_LIBRARY_PATH}/RInside")
+
+  include(FetchContent)
+  include(ExternalProject)
+
+  message(CHECK_START "Looking for R.dll")
+  set(_LIB_R_PATH ${JASP_BINARY_DIR}/R)
+  find_file(
+    _LIB_R
+    NAMES R.dll
+    PATHS ${_LIB_R_PATH}/bin
+    PATH_SUFFIXES x64 x32)
+
+  if(_LIB_R)
+    message(CHECK_PASS "found.")
+    message(STATUS "  ${_LIB_R}")
+  else()
+    message(CHECK_FAIL "not found in ${_LIB_R_PATH}/bin/x64")
+    message(FATAL_ERROR "R.dll is required for building R-Interface.")
+  endif()
+
+  message(CHECK_START "Checking for 'libRInside'")
+  find_library(
+    _LIB_RINSIDE
+    NAMES RInside
+    PATHS ${RINSIDE_PATH}/lib
+    PATH_SUFFIXES x64 x32 NO_CACHE)
+
+  if(_LIB_RINSIDE)
+    message(CHECK_PASS "found.")
+    message(STATUS "  ${_LIB_RINSIDE}")
+  else()
+    message(CHECK_FAIL "not found in ${RINSIDE_PATH}/lib")
+    message(FATAL_ERROR "libRInside is required for building ")
+  endif()
+
+  find_file(
+    _LIB_JSONCPP
+    NAMES libjsoncpp-24.dll
+    PATHS ${MINGW_PATH}/bin REQUIRED)
+
+  file(GLOB HEADER_FILES "${CMAKE_CURRENT_LIST_DIR}/jaspResults/src/*.h")
+  list(APPEND HEADER_FILES "${CMAKE_CURRENT_LIST_DIR}/jasprcpp.h")
+  list(APPEND HEADER_FILES "${CMAKE_CURRENT_LIST_DIR}/jasprcpp_interface.h")
+
+  file(GLOB SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/jaspResults/src/*.cpp")
+  list(APPEND SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/jasprcpp.cpp")
+
+  find_package(Boost 1.78 REQUIRED nowide)
+
+  add_library(R-Interface SHARED ${HEADER_FILES} ${SOURCE_FILES})
+
+  add_definitions(-DJASP_R_INTERFACE_LIBRARY)
+
+  target_include_directories(
+    R-Interface
+    PUBLIC # JASP
+           jaspResults/src
+           ${CMAKE_CURRENT_LIST_DIR}
+           ${PROJECT_SOURCE_DIR}/../Common
+           ${PROJECT_SOURCE_DIR}/../Common/jaspColumnEncoder
+           # R
+           ${R_INCLUDE_PATH}
+           ${RCPP_PATH}/include
+           ${RINSIDE_PATH}/include
+           # Boost and jsoncpp
+           ${MINGW_PATH}/include)
+
+  target_link_libraries(
+    R-Interface
+    PUBLIC # jsoncpp
+           ${_LIB_JSONCPP} # MinGW's libjsoncpp-24.dll
+           # RInside
+           ${_LIB_RINSIDE}
+           # R
+           $<$<NOT:$<PLATFORM_ID:Darwin>>:${_LIB_R}>
+           $<$<PLATFORM_ID:Darwin>:${_R_Framework}>
+           #
+           Boost::nowide
+           #
+           $<$<BOOL:${JASP_USES_QT_HERE}>:Qt::Core>)
+
+  target_compile_definitions(
+    R-Interface
+    PUBLIC JASP_R_INTERFACE_LIBRARY
+           QT_NO_DEPRECATED_WARNINGS
+           $<$<BOOL:${JASP_USES_QT_HERE}>:JASP_USES_QT_HERE>
+           $<$<BOOL:${PRINT_ENGINE_MESSAGES}>:PRINT_ENGINE_MESSAGES>)
+
   target_compile_definitions(
     R-Interface
     PUBLIC BOOST_INTERPROCESS_BOOTSTAMP_IS_SESSION_MANAGER_BASED
            BOOST_USE_WINDOWS_H
            NOMINMAX
            WIN32_LEAN_AND_MEAN)
-  # target_compile_options(R-Interface -Og -municode)
-elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+
+else()
+
+  file(GLOB SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/jaspResults/src/*.cpp")
+  list(APPEND SOURCE_FILES "${CMAKE_CURRENT_LIST_DIR}/jasprcpp.cpp")
+
+  add_library(R-Interface ${HEADER_FILES} ${SOURCE_FILES})
+
+  target_include_directories(
+    R-Interface
+    PUBLIC # JASP
+           jaspResults
+           ${PROJECT_SOURCE_DIR}/Common
+           ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder
+           ${LIBJSONCPP_INCLUDE_DIRS}
+           # R
+           ${R_INCLUDE_PATH}
+           ${RCPP_PATH}/include
+           ${RINSIDE_PATH}/include
+           #
+           ${Boost_INCLUDE_DIRS})
+
+  target_link_libraries(
+    R-Interface
+    PUBLIC $<$<PLATFORM_ID:Windows>:Boost::nowide>
+           Boost::filesystem
+           Boost::system
+           Boost::date_time
+           Boost::timer
+           Boost::chrono
+           # CPM/CMake
+           ${LIBJSONCPP_LINK_LIBRARIES}
+           # R
+           ${_LIB_RINSIDE}
+           $<$<PLATFORM_ID:Linux>:${_LIB_R}>
+           $<$<PLATFORM_ID:Darwin>:${_R_Framework}>
+           #
+           $<$<BOOL:${JASP_USES_QT_HERE}>:Qt::Core>)
+
+  target_compile_definitions(
+    R-Interface
+    PUBLIC JASP_R_INTERFACE_LIBRARY
+           QT_NO_DEPRECATED_WARNINGS
+           $<$<BOOL:${JASP_USES_QT_HERE}>:JASP_USES_QT_HERE>
+           $<$<BOOL:${PRINT_ENGINE_MESSAGES}>:PRINT_ENGINE_MESSAGES>)
+
+  if(IWYU_EXECUTABLE AND RUN_IWYU)
+    set_target_properties(R-Interface PROPERTIES CXX_INCLUDE_WHAT_YOU_USE
+                                                 ${IWYU_EXECUTABLE})
+  endif()
+
+  if(WIN32)
+    target_compile_definitions(
+      R-Interface
+      PUBLIC BOOST_INTERPROCESS_BOOTSTAMP_IS_SESSION_MANAGER_BASED
+             BOOST_USE_WINDOWS_H
+             NOMINMAX
+             WIN32_LEAN_AND_MEAN)
+    # target_compile_options(R-Interface -Og -municode)
+  elseif(LINUX)
+
+  endif()
 
 endif()
 

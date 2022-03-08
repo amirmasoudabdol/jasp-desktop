@@ -59,6 +59,7 @@ build/
 build*/
 bundle/
 bundle*/
+CMakeLists.txt.user
 
 # CLion Stuff
 cmake-build-*
@@ -73,3 +74,4 @@ Frameworks/
 R.framework/
 .cache/
 Modules/renv-root/
+Desktop/utilities/appdirs.h

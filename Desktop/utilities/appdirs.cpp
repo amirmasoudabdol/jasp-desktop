@@ -76,18 +76,21 @@ QString AppDirs::userModulesDir()
 
 QString AppDirs::bundledModulesDir()
 {
-	static QString folder = programDir().absoluteFilePath("../Modules/");
-// #ifdef __APPLE__
-// 	 programDir().absoluteFilePath("../Modules/");
-// #elif _WIN32
-// 	 programDir().absoluteFilePath("Modules") + '/';
-// #elif FLATPAK_USED
-// 	"/app/bin/Modules/";
-// #else  //Normal linux build
-// 	programDir().absoluteFilePath("Modules") + '/';
-// #endif
+	static QString folder = 
+#ifdef __APPLE__
+	 programDir().absoluteFilePath("../Modules/");
+#elif _WIN32
+	 programDir().absoluteFilePath("Modules") + '/';
+#elif FLATPAK_USED
+	"/app/bin/../Modules/";
+#else  //Normal linux build
+	programDir().absoluteFilePath("../Modules") + '/';
+#endif
+	// @Joris, I think these guys should be one level up,
+	// they are not binaries, so, they should not be in 
+	// the binary folder in my opinion.
 	
-	return folder ;
+	return folder;
 }
 
 QString AppDirs::processPath(const QString & path)
@@ -125,27 +128,38 @@ QString AppDirs::appData()
 
 QString AppDirs::rHome()
 {
+
+	QString rHomePath;
+
 #ifdef _WIN32
-	QString rHomePath = programDir().absoluteFilePath("R");
+	rHomePath = programDir().absoluteFilePath("R");
 #endif
 
 #if defined(__APPLE__)
-	QString rHomePath = programDir().absoluteFilePath("../Frameworks/R.framework/Versions/" + QString::fromStdString(AppInfo::getRDirName()) + "/Resources");
+	rHomePath = programDir().absoluteFilePath("../Frameworks/R.framework/Versions/" + QString::fromStdString(AppInfo::getRDirName()) + "/Resources");
 #endif
     
 #ifdef linux
 
-#ifndef R_HOME
-	QString rHomePath = programDir().absoluteFilePath("R/lib/libR.so");
+// I had to change this because CMake doesn't really like to pass values into
+// MACRO's and rather prefers this template method, so, I made some changes.
+//
+// That being said, none of these are necesasry because R_HOME_PATH should always
+// point to the right place even with all different build variations, so we can 
+// just remove it, but I leave it for the review.
+if (R_HOME().isEmpty())
+{
+	rHomePath = programDir().absoluteFilePath("R/lib/libR.so");
 	if (QFileInfo(rHomePath).exists() == false)
 #ifdef FLATPAK_USED
 		rHomePath = "/app/lib64/R/"; //Tools/flatpak/org.jaspstats.JASP.json also sets R_HOME to /app/lib64 for 32bits...
 #else
 		rHomePath = "/usr/lib/R/";
 #endif
-#else
-	QString rHomePath = QDir::isRelativePath(R_HOME) ? programDir().absoluteFilePath(R_HOME) : R_HOME;
-#endif
+} else {
+	Log::log() << "R_HOME is set " << R_HOME() << std::endl;
+	rHomePath = QDir::isRelativePath(R_HOME()) ? programDir().absoluteFilePath(R_HOME()) : R_HOME();
+}
 #endif
 	
 	return rHomePath;

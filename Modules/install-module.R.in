@@ -1,5 +1,5 @@
-# .Rprofile template that we may use for each module during the
-# installation.
+# Generated from install-module.R.in
+#
 Sys.setenv(GITHUB_PAT="@GITHUB_PAT@")
 Sys.setenv(RENV_PATHS_ROOT="@MODULES_RENV_ROOT_PATH@")
 Sys.setenv(RENV_PATHS_CACHE="@MODULES_RENV_CACHE_PATH@")
@@ -9,20 +9,19 @@ Sys.setenv(JAGS_INCLUDEDIR="@jags_INCLUDE_DIRS@")
 Sys.setenv(JAGS_LIBDIR="@jags_LIBRARY_DIRS@")
 
 if (@IS_LINUX_LOCAL_BUILD@) {
+	# Only set when building using LINUX_LOCAL_BUILD. This is to help jags finds its libraries
 	Sys.setenv(LD_LIBRARY_PATH="@jags_LIBRARY_DIRS@")
 }
 
-if ((Sys.info()["sysname"] == "Linux") && @IS_LINUX_LOCAL_BUILD@ ) {
+# The R_LIBRARY_PATH might already be there, but depending on the configuration 
+# of the CMake, we might be installing in a different location, so, I just add
+# it anyway! It gets to if-y. 
+.libPaths(c("@R_LIBRARY_PATH@", .libPaths()))
 
-	options(pkgType = "binary")
-
-	if (@IS_LINUX_LOCAL_BUILD@) {
-		.libPaths(c('@R_LIBS_LOCAL@', .libPaths()))
-	}
-}
-
+# Related to the comment above, there is variable here called, 
+# `libPathsToUse` but it is not connected to anything. If this works,
+# then, I don't need to set the libPaths() anymore perhaps.
 result <- jaspBase::installJaspModule("@MODULES_SOURCE_PATH@/@MODULE@", 
-	libPathsToUse=ifelse("@R_LIBS_LOCAL@" == "NULL", NULL, "@R_LIBS_LOCAL@"), 
 	repos="@R_REPOSITORY@", 
 	moduleLibrary="@MODULES_BINARY_PATH@/@MODULE@", 
 	onlyModPkg=FALSE)
@@ -34,6 +33,7 @@ if (result == "succes") {
 }
 
 # Converting the absolute symlinks to relative symlinks on macOS
+# Todo, I can do this using CMake like I do on Windows
 if (Sys.info()["sysname"] == "Darwin") { 
 	source('@MODULES_BINARY_PATH@/symlinkTools.R')
 	convertAbsoluteSymlinksToRelative('@MODULES_BINARY_PATH@', '@MODULES_RENV_CACHE_PATH@')

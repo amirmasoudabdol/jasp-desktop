@@ -1,46 +1,24 @@
 cmake_minimum_required(VERSION 3.21)
 
-set(CMAKE_MESSAGE_CONTEXT_SHOW ON)
+# Because Qt implementation is a bit buggy,
+# when this is fixed, the setup will be even nicer.
+set(QT_CREATOR_SKIP_CONAN_SETUP ON)
+
+if(APPLE)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET
+      10.15
+      CACHE STRING "Minimum macOS version the build will be able to run on"
+            FORCE)
+endif()
 
 project(
   JASP
-  VERSION 0.16.1.0 # <major>[.<minor>[.<patch>[.<tweak>]]]
+  VERSION 0.16.2.0 # <major>[.<minor>[.<patch>[.<tweak>]]]
   LANGUAGES CXX C
   HOMEPAGE_URL "http://jasp-stats.org/"
   DESCRIPTION "A fresh way to do statistics")
 
-include(FetchContent)
-include(ExternalProject)
-include(CMakePrintHelpers)
-include(Tools/cmake/CPM.cmake)
-
-include(Checks.cmake)
-
-find_package(Git)
-find_program(MAKE NAMES gmake nmake make)
-find_program(ACLOCAL NAMES aclocal)
-find_program(AUTOCONF NAMES autoconf)
-find_program(AUTORECONF NAMES autoreconf)
-find_program(AUTOUPDATE NAMES autoupdate)
-find_program(CCACHE_EXECUTABLE ccache)
-find_program(IWYU_EXECUTABLE include-what-you-use)
-
-# I have a construct for this, and Qt often messes things up.
-# I will consider turning this off, and letting Qt does it
-# when everything else worked properly
-option(USE_CONAN "Whether to use CONAN package manager" OFF)
-
-if(WIN32 OR USE_CONAN)
-  set(QT_CREATOR_SKIP_CONAN_SETUP ON)
-
-  if(NOT EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-    execute_process(WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-                    COMMAND conan install ${CMAKE_SOURCE_DIR} --build=missing)
-  endif()
-
-  include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-  conan_basic_setup(TARGETS)
-endif()
+set(CMAKE_MESSAGE_CONTEXT_SHOW ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -48,168 +26,90 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_FIND_FRAMEWORK ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-# TODO: Find this version number automatically
-set(R_VERSION "4.1.2")
-set(R_VERSION_MAJOR_MINOR "4.1")
-set(CURRENT_R_VERSION ${R_VERSION_MAJOR_MINOR})
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE
+      "Debug"
+      CACHE STRING
+            "OBS build type [Release, RelWithDebInfo, Debug, MinSizeRel]" FORCE)
+  message(STATUS "Building for ${CMAKE_BUILD_TYPE}")
+endif()
 
-# - [ ] This needs to be removed. We don't necessary need it, and
-#       for now, it is here for testing
-# set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/Install)
-# message(STATUS ${CMAKE_INSTALL_PREFIX})
+# ------ Build Toolchain
 
-# When everything is done, we should be able to just activate
-# this and build it for two architectures. This will also download
-# the correct R.framework
 # set(CMAKE_OSX_ARCHITECTURES "x86_64" "arm64")
 
-if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
-  set(R_DIR_NAME "${R_VERSION_MAJOR_MINOR}-arm64")
-else()
-  set(R_DIR_NAME "${R_VERSION_MAJOR_MINOR}")
-endif()
+# ------ CMake Modules
 
-if(WIN32)
-  if(CMAKE_SIZEOF_VOID_P EQUAL 8) # 64 bits
-    set(R_DIR_NAME "x64")
-  elseif(CMAKE_SIZEOF_VOID_P EQUAL 4) # 32 bits
-    set(R_DIR_NAME "i386")
-  endif()
-endif()
+include(FetchContent)
+include(ExternalProject)
+include(CMakePrintHelpers)
 
-# if(UNIX)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Tools/CMake")
 
-#   file(
-#     CHMOD
-#     ${CMAKE_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
-#     PERMISSIONS
-#     OWNER_EXECUTE)
+# ------ Options
 
-# endif()
+include(Config)
 
-# Sets the build options
-include(JASP.cmake)
+# ------ Conan Dependency Manager
 
-# Prepares and configures everything related to R, and R.framework
-include(R.cmake)
+include(Conan)
 
-# Builds and configures all the dependencies
-if(INSTALL_JASP_REQUIRED_LIBRARIES)
-  include(Dependencies.cmake)
-endif()
+# ------ JASP Config
 
-if(WIN32)
-  if(QTDIR
-     OR DEFINED ENV{QTDIR}
-     OR DEFINED ENV{QTDIR32}
-     OR DEFINED ENV{QTDIR64})
-    # Qt path set by user or env var
-  else()
-    set(QTDIR
-        ""
-        CACHE PATH "Path to Qt (e.g. C:/Qt/5.7/msvc2015_64)")
-    message(
-      WARNING
-        "QTDIR variable is missing.  Please set this variable to specify path to Qt (e.g. C:/Qt/5.7/msvc2015_64)"
-    )
-  endif()
-endif()
+include(Programs)
 
-# This loads all the Qt-related CMake Modules.
-find_package(Qt6 REQUIRED COMPONENTS Core)
+include(Libraries)
 
+include(Dependencies)
+
+include(JASP)
+
+include(R)
+
+# These tell Qt to do its things
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# With this, we can hit up to 90% speed up!
-option(USE_CCACHE "Whether to use ccache for build" OFF)
-option(RUN_IWYU "Whether to run Include What You Use" OFF)
-option(INSTALL_R_FRAMEWORK "Whether to download and prepare R.framework" ON)
-option(INSTALL_R_MODULES "Whether or not installing R Modules" OFF)
-option(GIT_SUBMODULE "Check submodules during build" ON)
-option(
-  INSTALL_JASP_REQUIRED_LIBRARIES
-  "Indicates whether CMake should take care of the dependencies like 'Boost', 'jsoncpp', etc."
-  OFF)
-option(BUILD_TESTS "Whether to build the test suits" OFF)
-option(LINUX_LOCAL_BUILD "Whether we are building inside the Build folder" OFF)
-option(FLATPAK_USED "Whether we are building for Flatpak" OFF)
-
-if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-  set(FLATPAK_USED ON)
+# Later, I would try tor remove this, for now, it's necessary because Conan
+# tends to mess up the directory structure
+if(WIN32)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO
+      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL
+      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 endif()
-
-if(LINUX_LOCAL_BUILD)
-  set(FLATPAK_USED OFF)
-  message(STATUS "JASP will be configured for local testing")
-  message(
-    WARNING
-      "In this mode, JASP configures a local R/library; however this cannot be used for installing JASP. If you wish to install JASP (e.g., on Flatpak), you must diabled this flag."
-  )
-endif()
-
-if(INSTALL_R_MODULES AND (GITHUB_PAT STREQUAL ""))
-  message(
-    WARNING
-      "You probably need to set the GITHUB_PAT; otherwise CMAKE cannot effectively communicate with GitHub."
-  )
-endif()
-
-if(CCACHE_EXECUTABLE
-   AND USE_CCACHE
-   AND (NOT
-        CMAKE_GENERATOR
-        STREQUAL
-        "Xcode"
-       ))
-  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_EXECUTABLE}")
-  message(STATUS "Found ccache: ${CCACHE_EXECUTABLE}")
-endif()
-
-if(IWYU_EXECUTABLE)
-  message(STATUS "Found iwyu: ${IWYU_EXECUTABLE}")
-endif()
-
-# Dealing with Git submodules
-if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
-  # Update submodules as needed
-  if(GIT_SUBMODULE)
-    message(STATUS "Submodule update")
-    execute_process(
-      COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      RESULT_VARIABLE GIT_SUBMOD_RESULT)
-    if(NOT
-       GIT_SUBMOD_RESULT
-       EQUAL
-       "0")
-      message(
-        FATAL_ERROR
-          "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules"
-      )
-    endif()
-  endif()
-endif()
-
-if(NOT (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux"))
-  set(IS_LINUX_LOCAL_BUILD FALSE)
-endif()
-
-# I am not using this for now, but later on, we can use it to
-# create binaries and installer for different systems
-if(WIN32) # Check if we are on Windows
-  set(SYSTEM_TYPE WIN32)
-  # else(APPLE)
-  #   set(SYSTEM_TYPE MACOSX_BUNDLE)
-endif()
-
-# endif()
 
 add_subdirectory(Common)
 
 if(NOT WIN32)
   add_subdirectory(R-Interface)
+else()
+  # Building R-Interface with MinGW configuration
+  # Note that the reason I'm not directly building into the main BINARY_DIR
+  # is because CMake artifacts will conflicts in that case.
+  add_custom_target(
+    R-Interface
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/R-Interface
+    BYPRODUCTS ${CMAKE_BINARY_DIR}/R-Interface/libR-Interface.dll
+               ${CMAKE_BINARY_DIR}/R-Interface/libR-Interface.dll.a
+    COMMAND
+      ${CMAKE_COMMAND} -G "MinGW Makefiles" -S . -B
+      ${CMAKE_BINARY_DIR}/R-Interface "-DMINGW_PATH:PATH=${MINGW_PATH}"
+      "-DCMAKE_C_COMPILER:STRING=${MINGW_C_COMPILER}"
+      "-DCMAKE_CXX_COMPILER:STRING=${MINGW_CXX_COMPILER}"
+      "-DCMAKE_MAKE_PROGRAM:STRING=${MINGW_MAKE_PROGRAM}"
+      "-DJASP_BINARY_DIR:STRING=${CMAKE_BINARY_DIR}"
+      "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/R-Interface
+    COMMENT "------ Configuring and Building the libR-Interface")
+
+  # add_custom_target(R-Interface DEPENDS
+  #   ${CMAKE_BINARY_DIR}/R-Interface/libR-Interface.dll
+  #   ${CMAKE_BINARY_DIR}/R-Interface/libR-Interface.dll.a)
 endif()
 
 add_subdirectory(Engine)
@@ -221,10 +121,10 @@ if(BUILD_TESTS)
 endif()
 
 # Builds, installs and configures JASP Modules
-include(Modules.cmake)
+include(Modules)
 
 # Installs the JASP and JASPEngine
-include(Install.cmake)
+include(Install)
 
 # Packs and creates installer executable for Windows, and macOS
-include(Pack.cmake)
+include(Pack)

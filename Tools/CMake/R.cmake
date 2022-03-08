@@ -10,12 +10,32 @@
 #       done during the build stage and not configuration
 # - [ ] All the code inside the if(APPLE), and if(WIN32) should be turned into
 #       a CMake module. I leave this for later cleanup
-# - [ ] Both R package intaller can be improved by some caching, now cleaning is
+# - [ ] Both R package installer can be improved by some caching, now cleaning can be
 #       a bit brutal
 #
 
-list(APPEND CMAKE_MESSAGE_CONTEXT Config)
+list(APPEND CMAKE_MESSAGE_CONTEXT R)
 
+set(R_VERSION "4.1.2")
+set(R_VERSION_MAJOR_MINOR "4.1")
+set(CURRENT_R_VERSION ${R_VERSION_MAJOR_MINOR})
+
+if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
+  set(R_DIR_NAME "${R_VERSION_MAJOR_MINOR}-arm64")
+else()
+  set(R_DIR_NAME "${R_VERSION_MAJOR_MINOR}")
+endif()
+
+if(WIN32)
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8) # 64 bits
+    set(R_DIR_NAME "x64")
+  elseif(CMAKE_SIZEOF_VOID_P EQUAL 4) # 32 bits
+    set(R_DIR_NAME "i386")
+  endif()
+endif()
+
+# ------ Preparing REnv Paths
+#
 set(MODULES_SOURCE_PATH
     ${PROJECT_SOURCE_DIR}/Modules
     CACHE PATH "Location of JASP Modules")
@@ -33,6 +53,12 @@ set(JASP_ENGINE_PATH
     "${CMAKE_BINARY_DIR}/Desktop/"
     CACHE PATH "Location of the JASPEngine")
 
+make_directory("${MODULES_BINARY_PATH}")
+make_directory("${MODULES_RENV_ROOT_PATH}")
+make_directory("${MODULES_RENV_CACHE_PATH}")
+
+# ------
+
 if(APPLE)
 
   set(R_FRAMEWORK_PATH "${CMAKE_BINARY_DIR}/Frameworks")
@@ -41,6 +67,7 @@ if(APPLE)
   set(R_LIBRARY_PATH "${R_HOME_PATH}/library")
   set(R_OPT_PATH "${R_HOME_PATH}/opt")
   set(R_EXECUTABLE "${R_HOME_PATH}/R")
+  set(R_INCLUDE_PATH "${R_HOME_PATH}/include")
   set(RCPP_PATH "${R_LIBRARY_PATH}/Rcpp")
   set(RINSIDE_PATH "${R_LIBRARY_PATH}/RInside")
 
@@ -83,8 +110,7 @@ if(APPLE)
 
       message(CHECK_START "Downloading '${R_PACKAGE_NAME}'")
 
-      fetchcontent_populate(r_pkg)
-      fetchcontent_getproperties(r_pkg)
+      fetchcontent_makeavailable(r_pkg)
 
       if(r_pkg_POPULATED)
 
@@ -102,11 +128,29 @@ if(APPLE)
         execute_process(WORKING_DIRECTORY ${r_pkg_SOURCE_DIR}
                         COMMAND tar -xf R-fw.pkg/Payload)
 
-        execute_process(WORKING_DIRECTORY ${r_pkg_SOURCE_DIR}
-                        COMMAND tar -xf tcltk.pkg/Payload -C ${r_pkg_r_home}/)
+        if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
 
-        execute_process(WORKING_DIRECTORY ${r_pkg_SOURCE_DIR}
-                        COMMAND tar -xf texinfo.pkg/Payload -C ${r_pkg_r_home}/)
+          execute_process(WORKING_DIRECTORY ${r_pkg_SOURCE_DIR}
+                          COMMAND tar -xf tcltk.pkg/Payload -C ${r_pkg_r_home}/)
+
+          execute_process(
+            WORKING_DIRECTORY ${r_pkg_SOURCE_DIR}
+            COMMAND tar -xf texinfo.pkg/Payload -C ${r_pkg_r_home}/)
+
+        else()
+
+          make_directory(${r_pkg_r_home}/opt)
+          execute_process(
+            WORKING_DIRECTORY ${r_pkg_SOURCE_DIR}
+            COMMAND tar -xf tcltk.pkg/Payload --strip-components=2 -C
+                    ${r_pkg_r_home}/opt)
+
+          execute_process(
+            WORKING_DIRECTORY ${r_pkg_SOURCE_DIR}
+            COMMAND tar -xf texinfo.pkg/Payload --strip-components=2 -C
+                    ${r_pkg_r_home}/opt)
+
+        endif()
 
         message(CHECK_PASS "done.")
 
@@ -133,7 +177,7 @@ if(APPLE)
       # Patching R's pathing variables, R_HOME, etc. -----------
       message(CHECK_START "Patching bin/R and etc/Makeconf, and library paths")
 
-      include(${CMAKE_SOURCE_DIR}/PatchR.cmake)
+      include(${CMAKE_SOURCE_DIR}/Tools/CMake/PatchR.cmake)
       cmake_print_variables(r_pkg_r_home)
       cmake_print_variables(R_HOME_PATH)
       patch_r()
@@ -144,20 +188,22 @@ if(APPLE)
 
       # Patch and sign all first party libraries
       execute_process(
-        COMMAND_ECHO STDOUT
+        # COMMAND_ECHO STDOUT
         # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}
         COMMAND
           ${CMAKE_COMMAND} -D
-          NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+          NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
           -D PATH=${R_HOME_PATH} -D R_HOME_PATH=${R_HOME_PATH} -D
-          R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake
-          --trace-expand)
+          R_DIR_NAME=${R_DIR_NAME} -D SIGNING=1 -D
+          CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
+          ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake)
 
       # R binary should be patched as well
+      message(CHECK_START "Patching /bin/exec/R")
       execute_process(
-        COMMAND_ECHO STDOUT
-        # ERROR_QUIET OUTPUT_QUIET
+        # COMMAND_ECHO STDOUT
+        ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}
         COMMAND
           bash ${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
@@ -165,17 +211,32 @@ if(APPLE)
           "/Library/Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/lib"
           "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/lib"
       )
+      message(CHECK_PASS "successful")
 
       message(CHECK_START "Signing '${R_HOME_PATH}/bin/exec/R'")
-      execute_process(
-        COMMAND_ECHO STDOUT
-        # ERROR_QUIET OUTPUT_QUIET
-        WORKING_DIRECTORY ${R_HOME_PATH}
-        COMMAND
-          codesign --force --sign
-          "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)"
-          "${R_HOME_PATH}/bin/exec/R")
-      message(CHECK_FAIL "successful.")
+
+      set(SIGNING_RESULT "timeout")
+      while((${SIGNING_RESULT} STREQUAL "timeout") OR (${SIGNING_RESULT}
+                                                       STREQUAL "1"))
+        execute_process(
+          # COMMAND_ECHO STDOUT
+          # ERROR_QUIET OUTPUT_QUIET
+          TIMEOUT 30
+          WORKING_DIRECTORY ${R_HOME_PATH}
+          COMMAND
+            codesign --force --verbose --deep ${CODESIGN_TIMESTAMP_FLAG} --sign
+            "${APPLE_CODESIGN_IDENTITY}" --options runtime
+            "${R_HOME_PATH}/bin/exec/R"
+          RESULT_VARIABLE SIGNING_RESULT
+          OUTPUT_VARIABLE SIGNING_OUTPUT
+          ERROR_VARIABLE SIGNING_ERROR)
+      endwhile()
+
+      if(NOT (SIGNING_RESULT STREQUAL "timeout"))
+        message(CHECK_PASS "successful")
+      else()
+        message(CHECK_FAIL "unsuccessful")
+      endif()
 
       execute_process(
         # COMMAND_ECHO STDOUT
@@ -250,14 +311,16 @@ if(APPLE)
     message(CHECK_START
             "Installing the 'RInside' and 'Rcpp' within the R.framework")
 
-    file(WRITE ${MODULES_RENV_ROOT_PATH}/install-RInside.R
-         "install.packages('RInside', repos='${R_REPOSITORY}')")
+    file(
+      WRITE ${MODULES_RENV_ROOT_PATH}/install-RInside.R
+      "install.packages(c('RInside', 'Rcpp'), type='binary', repos='${R_REPOSITORY}', INSTALL_opts='--no-multiarch --no-docs --no-test-load')"
+    )
 
     execute_process(
       # COMMAND_ECHO STDOUT
       ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${R_HOME_PATH}
-      COMMAND ./R --slave --no-restore --no-save
+      COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
               --file=${MODULES_RENV_ROOT_PATH}/install-RInside.R)
 
     if(NOT EXISTS ${R_LIBRARY_PATH}/RInside)
@@ -275,9 +338,11 @@ if(APPLE)
       WORKING_DIRECTORY ${R_HOME_PATH}
       COMMAND
         ${CMAKE_COMMAND} -D
-        NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+        NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
         -D PATH=${R_HOME_PATH}/library/RInside -D R_HOME_PATH=${R_HOME_PATH} -D
-        R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake)
+        R_DIR_NAME=${R_DIR_NAME} -D SIGNING=1 -D
+        CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
+        ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake)
 
     execute_process(
       # COMMAND_ECHO STDOUT
@@ -285,9 +350,11 @@ if(APPLE)
       WORKING_DIRECTORY ${R_HOME_PATH}
       COMMAND
         ${CMAKE_COMMAND} -D
-        NAME_TOOL_EXECUTABLE=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+        NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
         -D PATH=${R_HOME_PATH}/library/Rcpp -D R_HOME_PATH=${R_HOME_PATH} -D
-        R_DIR_NAME=${R_DIR_NAME} -P ${PROJECT_SOURCE_DIR}/Patch.cmake)
+        R_DIR_NAME=${R_DIR_NAME} -D SIGNING=1 -D
+        CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
+        ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake)
 
     message(CHECK_PASS "successful.")
   endif()
@@ -307,8 +374,6 @@ if(APPLE)
   endif()
 
 elseif(WIN32)
-  # TODO
-  #   - [ ] I can use the PATH to R/ as _R_framework and everything else should just work
 
   set(R_HOME_PATH "${CMAKE_BINARY_DIR}/R")
   set(R_BIN_PATH "${R_HOME_PATH}/bin")
@@ -316,8 +381,12 @@ elseif(WIN32)
   set(R_LIBRARY_PATH "${R_HOME_PATH}/library")
   set(R_OPT_PATH "${R_HOME_PATH}/opt")
   set(R_EXECUTABLE "${R_HOME_PATH}/bin/R")
+  set(R_INCLUDE_PATH "${R_HOME_PATH}/include")
   set(RCPP_PATH "${R_LIBRARY_PATH}/Rcpp")
   set(RINSIDE_PATH "${R_LIBRARY_PATH}/RInside")
+
+  # This will be added to the install.packages calls
+  set(USE_LOCAL_R_LIBS_PATH ", lib='${R_LIBRARY_PATH}'")
 
   cmake_print_variables(R_HOME_PATH)
   cmake_print_variables(R_LIB_PATH)
@@ -348,8 +417,7 @@ elseif(WIN32)
       DOWNLOAD_NO_EXTRACT ON
       DOWNLOAD_NAME ${R_PACKAGE_NAME})
 
-    fetchcontent_populate(r_win_exe)
-    fetchcontent_getproperties(r_win_exe)
+    fetchcontent_makeavailable(r_win_exe)
 
     if(r_win_exe_POPULATED)
 
@@ -394,14 +462,16 @@ elseif(WIN32)
 
     message(CHECK_START "Installing the 'RInside' and 'Rcpp'")
 
-    file(WRITE ${CMAKE_BINARY_DIR}/Modules/renv-root/install-RInside.R
-         "install.packages('RInside', repos='${R_REPOSITORY}')")
+    file(
+      WRITE ${CMAKE_BINARY_DIR}/Modules/renv-root/install-RInside.R
+      "install.packages(c('RInside', 'Rcpp'), type='binary', repos='${R_REPOSITORY}' ${USE_LOCAL_R_LIBS_PATH}, INSTALL_opts='--no-multiarch --no-docs --no-test-load')"
+    )
 
     execute_process(
       # COMMAND_ECHO STDOUT
       ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${R_BIN_PATH}
-      COMMAND ./R --slave --no-restore --no-save
+      COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
               --file=${CMAKE_BINARY_DIR}/Modules/renv-root/install-RInside.R)
 
     if(NOT EXISTS ${R_LIBRARY_PATH}/RInside)
@@ -413,28 +483,47 @@ elseif(WIN32)
 
   endif()
 
-elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+elseif(LINUX)
 
   message(CHECK_START "Looking for R")
 
-  find_program(R_BIN NAMES R)
+  if(CUSTOM_R_PATH STREQUAL "")
 
-  if(R_BIN STREQUAL "")
+    find_program(R_BIN NAMES R)
 
-    message(CHECK_FAIL "unsuccessful")
-    message(
-      FATAL_ERROR
-        "R is not installed in your system. Please install R and try again.")
+    if(R_BIN STREQUAL "")
+
+      message(CHECK_FAIL "unsuccessful")
+      message(
+        FATAL_ERROR
+          "R is not installed in your system. Please install R and try again.")
+
+    else()
+
+      message(CHECK_PASS "successful")
+
+      execute_process(
+        COMMAND ${R_BIN} RHOME
+        OUTPUT_VARIABLE R_HOME_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+      message(STATUS "R_HOME is ${R_HOME_PATH}")
+
+    endif()
 
   else()
 
-    message(CHECK_PASS "successful")
+    if(EXISTS ${CUSTOM_R_PATH})
 
-    execute_process(
-      COMMAND ${R_BIN} RHOME
-      OUTPUT_VARIABLE R_HOME_PATH
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
-    message(STATUS "R_HOME is ${R_HOME_PATH}")
+      set(R_HOME_PATH ${CUSTOM_R_PATH})
+      message(CHECK_PASS "successful")
+      message(STATUS "Using a custom R installation, ${R_HOME_PATH}")
+
+    else()
+
+      message(CHECK_FAIL "unsuccessful")
+      message(FATAL_ERROR "${CUSTOM_R_PATH} does not exist.")
+
+    endif()
 
   endif()
 
@@ -444,8 +533,7 @@ elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
         "JASP is configured to install all its R depdendencies inside the build folder. If this is not what you want, make sure that 'LINUX_LOCAL_BUILD' parametere is set to OFF, e.g., 'cmake .. -DLINUX_LOCAL_BUILD=OFF'"
     )
 
-    set(R_LIBS_LOCAL "${CMAKE_BINARY_DIR}/R/library")
-    set(R_LIBRARY_PATH "${R_LIBS_LOCAL}")
+    set(R_LIBRARY_PATH "${CMAKE_BINARY_DIR}/R/library")
     set(R_OPT_PATH "${CMAKE_BINARY_DIR}/R/opt")
     make_directory(${R_LIBRARY_PATH})
     make_directory(${R_OPT_PATH})
@@ -455,7 +543,6 @@ elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
         "JASP is configured to install all its depdendencies into the ${R_HOME_PATH}/library. CMake may not be able to continue if the user does not have the right permission to right into ${R_HOME_PATH}/library folder."
     )
 
-    set(R_LIBS_LOCAL "NULL") # <- This is being used in install-module.R.in
     set(R_LIBRARY_PATH "${R_HOME_PATH}/library")
     set(R_OPT_PATH "${R_HOME_PATH}/opt")
   endif()
@@ -464,14 +551,24 @@ elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
   set(RCPP_PATH "${R_LIBRARY_PATH}/Rcpp")
   set(RINSIDE_PATH "${R_LIBRARY_PATH}/RInside")
 
-  # This makes sure that `install.packages()` command be called with the right
-  # lib paths in case we are installing locally.
-  if(LINUX_LOCAL_BUILD)
-    set(USE_LOCAL_R_LIBS_PATH ", lib='${R_LIBS_LOCAL}'")
-    set(IS_LINUX_LOCAL_BUILD TRUE)
-  else()
-    set(USE_LOCAL_R_LIBS_PATH "")
-    set(IS_LINUX_LOCAL_BUILD FALSE)
+  set(USE_LOCAL_R_LIBS_PATH ", lib='${R_LIBRARY_PATH}'")
+
+  message(CHECK_START "Looking for R.h")
+  set(R_INCLUDE_PATH "${R_HOME_PATH}/include")
+  if(NOT EXISTS ${R_INCLUDE_PATH})
+    find_file(
+      _R_H
+      NAMES R.h
+      PATHS /usr/include /usr/include/R)
+
+    if(_R_H)
+      get_filename_component(R_INCLUDE_PATH ${_R_H} DIRECTORY)
+      message(CHECK_PASS "found")
+      message("  ${_R_H}")
+    else()
+      message(CHECK_FAIL "not found")
+      message(FATAL_ERROR "R.h is necessary for building R-Interface library.")
+    endif()
   endif()
 
   cmake_print_variables(R_HOME_PATH)
@@ -502,12 +599,12 @@ elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
 
     file(
       WRITE ${MODULES_RENV_ROOT_PATH}/install-RInside.R
-      "install.packages(c('RInside', 'Rcpp'), repos='${R_REPOSITORY}' ${USE_LOCAL_R_LIBS_PATH})"
+      "install.packages(c('RInside', 'Rcpp'), repos='${R_REPOSITORY}' ${USE_LOCAL_R_LIBS_PATH}, INSTALL_opts='--no-multiarch --no-docs --no-test-load')"
     )
 
     execute_process(
       ERROR_QUIET OUTPUT_QUIET
-      COMMAND R --slave --no-restore --no-save
+      COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
               --file=${MODULES_RENV_ROOT_PATH}/install-RInside.R)
 
     if(NOT EXISTS ${R_LIBRARY_PATH}/RInside)

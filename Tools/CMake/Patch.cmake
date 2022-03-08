@@ -31,14 +31,30 @@ else()
     REGEX
     ".*dSYM*")
 
+  file(GLOB BINARIES "${PATH}/*/bin/*")
+
+  set(FILES "")
+  list(
+    APPEND
+    FILES
+    ${LIBRARIES}
+    ${BINARIES})
+
   set(NEW_ID "")
 
-  foreach(FILE ${LIBRARIES})
+  foreach(FILE ${FILES})
 
     get_filename_component(FILE_NAME ${FILE} NAME)
     get_filename_component(DIRECTORY_NAME ${FILE} DIRECTORY)
 
-    message(CHECK_START "-------- ${FILE}")
+    string(LENGTH "${PATH}/" PATH_LENGTH)
+    string(
+      SUBSTRING "${FILE}"
+                "${PATH_LENGTH}"
+                "-1"
+                FILE_SHORT_PATH)
+
+    message(CHECK_START "--- Patching ${FILE_SHORT_PATH}")
 
     if(NOT EXISTS "${DIRECTORY_NAME}/${FILE_NAME}.patched.log")
 
@@ -48,12 +64,13 @@ else()
 
       if((FILE MATCHES "prophet.so")
          OR (FILE MATCHES "metaBMA.so")
+         OR (FILE MATCHES "rstanarm.so")
          OR (FILE MATCHES "libtbbmalloc.dylib")
          OR (FILE MATCHES "libtbbmalloc_proxy.dylib")
          OR (FILE MATCHES "libtbb.dylib"))
 
         execute_process(
-          COMMAND_ECHO STDOUT
+          # COMMAND_ECHO STDOUT
           # ERROR_QUIET OUTPUT_QUIET
           WORKING_DIRECTORY ${PATH}
           COMMAND
@@ -62,7 +79,7 @@ else()
             "${FILE}")
 
         execute_process(
-          COMMAND_ECHO STDOUT
+          # COMMAND_ECHO STDOUT
           # ERROR_QUIET OUTPUT_QUIET
           WORKING_DIRECTORY ${PATH}
           COMMAND
@@ -71,7 +88,7 @@ else()
             "${FILE}")
 
         execute_process(
-          COMMAND_ECHO STDOUT
+          # COMMAND_ECHO STDOUT
           # ERROR_QUIET OUTPUT_QUIET
           WORKING_DIRECTORY ${PATH}
           COMMAND
@@ -132,13 +149,12 @@ else()
       endif()
 
       # Changing the `R_HOME/lib/` prefix
-      message(STATUS "1")
       execute_process(
-        COMMAND_ECHO STDOUT
-        # ERROR_QUIET OUTPUT_QUIET
+        # COMMAND_ECHO STDOUT
+        ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${PATH}
         COMMAND
-          bash ${NAME_TOOL_EXECUTABLE} "${FILE}"
+          bash ${NAME_TOOL_PREFIX_PATCHER} "${FILE}"
           "/Library/Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/lib"
           "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/lib"
       )
@@ -146,51 +162,86 @@ else()
       # Changing the `/opt/R/arm64/lib` prefix
       # These are additional libraries needed for arm64.
       # @todo, at some point, we might need to have a case for them, but for now they are fine
-      message(STATUS "2")
-      execute_process(
-        COMMAND_ECHO STDOUT
-        # ERROR_QUIET OUTPUT_QUIET
-        WORKING_DIRECTORY ${PATH}
-        COMMAND
-          bash ${NAME_TOOL_EXECUTABLE} "${FILE}" "/opt/R/arm64/lib"
-          "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/opt/R/arm64/lib"
-      )
-
-      # Changing the library `id`s
-      message(STATUS "3")
-      execute_process(
-        COMMAND_ECHO STDOUT
-        # ERROR_QUIET OUTPUT_QUIET
-        WORKING_DIRECTORY ${PATH}
-        COMMAND install_name_tool -id "${NEW_ID}" "${FILE}")
-
-      execute_process(
-        COMMAND_ECHO STDOUT
-        WORKING_DIRECTORY ${PATH}
-        COMMAND otool -L "${FILE}")
-
-      # Signing the library
-      message(STATUS "4")
-
-      if(SIGNING)
+      if(NOT (FILE MATCHES ".*(runjags|rjags|RoBMA|metaBMA).*"))
 
         execute_process(
           COMMAND_ECHO STDOUT
           # ERROR_QUIET OUTPUT_QUIET
           WORKING_DIRECTORY ${PATH}
           COMMAND
-            codesign --force --sign
-            "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)" "${FILE}")
+            bash ${NAME_TOOL_PREFIX_PATCHER} "${FILE}" "/opt/R/arm64/lib"
+            "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/opt/R/arm64/lib"
+        )
+
+      else()
+
+        # Changing the `/opt/jags/lib` prefix
+
+        if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
+          execute_process(
+            # COMMAND_ECHO STDOUT
+            ERROR_QUIET OUTPUT_QUIET
+            WORKING_DIRECTORY ${PATH}
+            COMMAND
+              bash ${NAME_TOOL_PREFIX_PATCHER} "${FILE}" "/opt/R/arm64/lib"
+              "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/opt/jags/lib"
+          )
+
+        else()
+
+          execute_process(
+            # COMMAND_ECHO STDOUT
+            ERROR_QUIET OUTPUT_QUIET
+            WORKING_DIRECTORY ${PATH}
+            COMMAND
+              bash ${NAME_TOOL_PREFIX_PATCHER} "${FILE}" "/usr/local/lib"
+              "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/opt/jags/lib"
+          )
+
+        endif()
 
       endif()
 
+      # Changing the library `id`s
       execute_process(
-        COMMAND_ECHO STDOUT
+        # COMMAND_ECHO STDOUT
+        ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${PATH}
-        COMMAND spctl -a -vvv --raw "${FILE}")
+        COMMAND install_name_tool -id "${NEW_ID}" "${FILE}")
 
       file(WRITE ${DIRECTORY_NAME}/${FILE_NAME}.patched.log "")
       message(CHECK_PASS "successful.")
+
+      # Signing the library
+
+      if(${SIGNING})
+        set(APPLE_CODESIGN_IDENTITY
+            "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)")
+
+        set(SIGNING_RESULT "timeout")
+
+        message(CHECK_START "--- Signing  ${FILE_SHORT_PATH}")
+
+        while(${SIGNING_RESULT} STREQUAL "timeout")
+
+          execute_process(
+            # COMMAND_ECHO STDOUT
+            ERROR_QUIET OUTPUT_QUIET
+            TIMEOUT 30
+            WORKING_DIRECTORY ${PATH}
+            COMMAND codesign --deep --force ${CODESIGN_TIMESTAMP_FLAG} --sign
+                    "${APPLE_CODESIGN_IDENTITY}" --options runtime "${FILE}"
+            RESULT_VARIABLE SIGNING_RESULT
+            OUTPUT_VARIABLE SIGNING_OUTPUT)
+        endwhile()
+
+        if(NOT (SIGNING_RESULT STREQUAL "timeout"))
+          message(CHECK_PASS "successful")
+        else()
+          message(CHECK_FAIL "unsuccessful")
+        endif()
+
+      endif()
 
     else()
 

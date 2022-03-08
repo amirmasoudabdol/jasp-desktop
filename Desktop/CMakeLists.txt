@@ -1,100 +1,5 @@
 list(APPEND CMAKE_MESSAGE_CONTEXT Desktop)
 
-find_package(ZLIB REQUIRED)
-find_package(Iconv REQUIRED)
-
-find_package(LibArchive)
-if(NOT LibArchive_FOUND)
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(
-    LibArchive
-    REQUIRED
-    IMPORTED_TARGET
-    libarchive)
-endif()
-
-# find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)
-
-find_package(
-  Boost REQUIRED
-  COMPONENTS nowide
-             filesystem
-             system
-             date_time
-             timer
-             chrono)
-
-find_package(
-  Qt6 REQUIRED
-  COMPONENTS Core
-             Gui
-             OpenGL
-             Widgets
-             Qml
-             WebEngineQuick
-             WebChannel
-             Svg
-             Network
-             PrintSupport
-             Xml
-             DBus
-             QuickTemplates2
-             Quick
-             QuickLayouts
-             QuickControls2
-             QuickControls2Impl
-             QmlWorkerScript
-             QuickWidgets
-             Core5Compat)
-
-if(NOT INSTALL_JASP_REQUIRED_LIBRARIES)
-
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(
-    LIBJSONCPP
-    REQUIRED
-    IMPORTED_TARGET
-    jsoncpp)
-
-  pkg_check_modules(
-    LIBREADSTAT
-    REQUIRED
-    IMPORTED_TARGET
-    readstat)
-
-else()
-
-  #   # find_library(
-  #   #   LIBJSONCPP REQUIRED
-  #   #   NAMES jsoncpp
-  #   #   HINTS ${jsoncpp_LIBRARY_DIRS})
-
-  #   # WARNING: This is not the way to do it, and it does not work with Ninja :\
-
-  # jsoncpp
-  set(LIBJSONCPP_INCLUDE_DIRS ${jsoncpp_INCLUDE_DIRS})
-  set(LIBJSONCPP_LIBRARY_DIRS ${jsoncpp_LIBRARY_DIRS})
-  set(LIBJSONCPP_LINK_LIBRARIES ${jsoncpp_LIBRARY_DIRS}/libjsoncpp.a)
-
-  # readstat
-  set(LIBREADSTAT_INCLUDE_DIRS ${readstat_INCLUDE_DIRS})
-  set(LIBREADSTAT_LIBRARY_DIRS ${readstat_LIBRARY_DIRS})
-  set(LIBREADSTAT_LINK_LIBRARIES ${LIBREADSTAT_LIBRARY_DIRS}/libreadstat.a)
-
-  # endif()
-endif()
-
-# TODO:
-#
-# - [ ] There is not much to configure here, CMake takes care of the
-#       most variable, but for now, I keep it like this. When we are
-#       sure that things are working, we can just drop the `.template`
-# - [ ] If and when Xcode build works, we can use this in the Info.plist
-#       and let Xcode derives it based on our build setting.
-#
-# <key>LSMinimumSystemVersion</key>
-# <string>$(MACOSX_DEPLOYMENT_TARGET)</string>
-
 if(APPLE)
   if(CMAKE_GENERATOR STREQUAL "Xcode")
     configure_file(${CMAKE_SOURCE_DIR}/Tools/macOS/Info.plist.in
@@ -107,6 +12,10 @@ endif()
 
 # We can technically use these two lines to grab all *.h, and *.cpp files
 # but it think there are unused files.
+
+configure_file(${CMAKE_CURRENT_LIST_DIR}/utilities/appdirs.h.in
+               ${CMAKE_CURRENT_LIST_DIR}/utilities/appdirs.h)
+message(STATUS "appdirs.h is successfully generated...")
 
 file(GLOB_RECURSE HEADER_FILES "${CMAKE_CURRENT_LIST_DIR}/*.h")
 list(REMOVE_ITEM HEADER_FILES
@@ -192,20 +101,21 @@ else()
     ${HEADER_FILES}
     ${SOURCE_FILES}
     ${BUNDLE_RESOURCES}
-    ${_R_Framework})
+    $<$<PLATFORM_ID:Darwin>:${_R_Framework}>)
 
   if(IWYU_EXECUTABLE AND RUN_IWYU)
     set_target_properties(JASP PROPERTIES CXX_INCLUDE_WHAT_YOU_USE
                                           ${IWYU_EXECUTABLE})
   endif()
 
-  add_custom_target(
-    Resources
+  add_custom_command(
+    TARGET JASP
+    POST_BUILD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND cp -r Resources ${CMAKE_BINARY_DIR}
-    BYPRODUCTS ${CMAKE_BINARY_DIR}/Resources)
-
-  add_dependencies(JASP Resources)
+    COMMAND ${CMAKE_COMMAND} -E copy_directory Resources/
+            ${CMAKE_BINARY_DIR}/Resources
+    BYPRODUCTS ${CMAKE_BINARY_DIR}/Resources
+    COMMENT "------ Updating the Resources")
 
 endif()
 
@@ -213,79 +123,84 @@ add_dependencies(JASP JASPEngine)
 
 target_compile_definitions(JASP PUBLIC JASP_USES_QT_HERE)
 
-target_compile_options(JASP PUBLIC -Wno-deprecated-declarations)
+if(NOT WIN32)
+  target_compile_options(JASP PUBLIC -Wno-deprecated-declarations)
+endif()
 
 if(INSTALL_R_MODULES)
   add_dependencies(JASP Modules)
 endif()
 
-if(INSTALL_JASP_REQUIRED_LIBRARIES)
-  add_dependencies(JASP readstat-install)
+if(NOT WINDOWS)
+  add_dependencies(JASP readstat)
 endif()
 
 target_include_directories(
-  JASP PUBLIC ${LIBREADSTAT_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/Common
-              ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder)
-
-# if(UNIX)
+  JASP
+  PUBLIC ${LIBREADSTAT_INCLUDE_DIRS}
+         $<$<PLATFORM_ID:Windows>:${MINGW_LIBREADSTAT_H}>
+         ${PROJECT_SOURCE_DIR}/Common
+         ${PROJECT_SOURCE_DIR}/Common/jaspColumnEncoder)
 
 target_link_libraries(
-JASP
-PUBLIC
-  Common
-  Qt::Core
-  Qt::Gui
-  Qt::OpenGL
-  Qt::Widgets
-  Qt::Qml
-  Qt::WebEngineQuick
-  Qt::WebChannel
-  Qt::Svg
-  Qt::Network
-  Qt::PrintSupport
-  Qt::Xml
-  Qt::Quick
-  Qt::QuickLayouts
-  Qt::QuickControls2
-  Qt::QuickControls2Impl
-  Qt::QuickWidgets
-  Qt::Core5Compat
-  Qt::QuickTemplates2
-  Qt::DBus
-  Qt::QmlWorkerScript
-  # OpenSSL::SSL
-  # OpenSSL::Crypto
-  # System
-  $<$<BOOL:${USE_CONAN}>:CONAN_PKG::libiconv>
-  $<$<BOOL:${USE_CONAN}>:CONAN_PKG::zlib>
-  $<$<BOOL:${USE_CONAN}>:CONAN_PKG::openssl>
-  # Based on our config, this is either from PkgConfig, or the build/_deps/
-  ${LIBREADSTAT_LINK_LIBRARIES}
-  # System
-  ${Iconv_LIBRARIES}
-  ${ZLIB_LIBRARIES} # Needed for libreadstat.a
-  $<$<PLATFORM_ID:Darwin>:${_R_Framework}>)
+  JASP
+  PUBLIC
+    Common
+    Qt::Core
+    Qt::Gui
+    Qt::OpenGL
+    Qt::Widgets
+    Qt::Qml
+    Qt::WebEngineQuick
+    Qt::WebChannel
+    Qt::Svg
+    Qt::Network
+    Qt::PrintSupport
+    Qt::Xml
+    Qt::Quick
+    Qt::QuickLayouts
+    Qt::QuickControls2
+    Qt::QuickControls2Impl
+    Qt::QuickWidgets
+    Qt::Core5Compat
+    Qt::QuickTemplates2
+    Qt::DBus
+    Qt::QmlWorkerScript
+    Qt::LabsFolderListModel
+    # System
+    ZLIB::ZLIB
+    Iconv::Iconv
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    # ReadStat -----------------------------------
+    ${LIBREADSTAT_LIBRARIES}
+    # MinGW's ReadStat
+    $<$<PLATFORM_ID:Windows>:${MINGW_LIBREADSTAT}>
+    # R-Framework --------------------------------
+    $<$<PLATFORM_ID:Darwin>:${_R_Framework}>)
 
-# elseif(WIN32)
-#   # As far as I understood, on Windows we don't need to do a lot.
-#   # I only want to remove the _R_Framework explicitely. But, as we
-#   # progress that can be dealt with with a variable.
-# else() # Linux
+if(NOT WINDOWS)
+  target_link_libraries(
+    JASP 
+      PUBLIC 
+      # When using Conan, we need to provide the static libraries directly, for some reason!
+      ${Iconv_LIBRARY_LIST})
+endif()
 
-# endif()
-
-# Amir: All these single if's can be written using the 
+# Amir: All these single if's can be written using the
 #       generator expressions but since debugging those
 #       isn't trivial, I don't want to do it now
 if(LINUX_LOCAL_BUILD)
-  target_compile_definitions(JASP PUBLIC
-    LINUX_LOCAL_BUILD)
+  target_compile_definitions(JASP PUBLIC LINUX_LOCAL_BUILD)
 endif()
 
 if(FLATPAK_USED)
-  target_compile_definitions(JASP PUBLIC
-    FLATPAK_USED)
+  target_compile_definitions(JASP PUBLIC FLATPAK_USED)
 endif()
+
+# if(WIN32)
+#   target_link_options(JASP PUBLIC libreadstat)
+# endif()
 
 # Amir:
 # We can either add the resources using the `.qrc` files, or ask CMake to
