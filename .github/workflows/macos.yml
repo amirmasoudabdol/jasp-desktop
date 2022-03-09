@@ -31,8 +31,8 @@ jobs:
       - name: Testing the Code Signing
         run: |
           touch Cleaner.sh
-          /usr/bin/codesign --force -s "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)" Cleaner.sh
-          /usr/bin/codesign --verify --verbose --display
+          codesign --force --verbose --sign "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)" Cleaner.sh
+          codesign --verify --verbose --display Cleaner.sh
       # - name: Updating Homebrew
       #   run: brew update --preinstall
       # - name: Preparing the Requirements
