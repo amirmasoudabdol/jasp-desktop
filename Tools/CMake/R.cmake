@@ -1,8 +1,22 @@
-# R/Environment Configurations
+# R.cmake handles the process of downloading, patching, locating and pathing the R
+# instance in different platforms. There is a lot that is going on here, so, if you
+# don't know what you are doing, you might very well start breaking things!
 #
-#   - Assuming that R.framework exists, this set the all the R-related paths
-#   - Install RInside, and Rcpp, and prepare them to be linked to the R-Interface
-
+# The general flow of setting R is as follow:
+#
+#   - Downloading or locating the R instance, e.g., R.framework,
+#   - Copying the R instance to the build folder, after patching and preparing it (only on Windows and macOS)
+#   - Installing RInside, and Rcpp
+#   - Interpolating all the necessary paths and passing them to the rest of the CMake
+#
+# On macOS,
+#
+#
+# On Windows,
+#
+#
+# On Linux,
+#
 # Todos:
 #
 # - [ ] Maybe, the entire R.framework prepration should be a target. The advantages
@@ -16,11 +30,11 @@
 
 list(APPEND CMAKE_MESSAGE_CONTEXT R)
 
-set(R_VERSION "4.1.2")
+set(R_VERSION "4.1.3")
 set(R_VERSION_MAJOR_MINOR "4.1")
 set(CURRENT_R_VERSION ${R_VERSION_MAJOR_MINOR})
 
-if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
+if(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
   set(R_DIR_NAME "${R_VERSION_MAJOR_MINOR}-arm64")
 else()
   set(R_DIR_NAME "${R_VERSION_MAJOR_MINOR}")
@@ -82,20 +96,20 @@ if(APPLE)
   if(INSTALL_R_FRAMEWORK AND (NOT EXISTS
                               ${CMAKE_BINARY_DIR}/Frameworks/R.framework))
 
-    if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
+    if(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
 
-      set(R_PACKAGE_NAME "R-${R_VERSION}-${CMAKE_HOST_SYSTEM_PROCESSOR}.pkg")
+      set(R_PACKAGE_NAME "R-${R_VERSION}-${CMAKE_OSX_ARCHITECTURES}.pkg")
       set(R_DOWNLOAD_URL
           "https://cran.r-project.org/bin/macosx/big-sur-arm64/base/R-${R_VERSION}-arm64.pkg"
       )
-      set(R_PACKAGE_HASH "69e8845ffa134c822d4bdcf458220e841a9eeaa5")
+      set(R_PACKAGE_HASH "4e702650f8967bc388ae31d897a4ae888dd6e89b")
 
     else()
 
       set(R_PACKAGE_NAME "R-${R_VERSION}.pkg")
       set(R_DOWNLOAD_URL
           "https://cran.r-project.org/bin/macosx/base/R-${R_VERSION}.pkg")
-      set(R_PACKAGE_HASH "61d3909bc070f7fb86c5a2bd67209fda9408faaa")
+      set(R_PACKAGE_HASH "45121f2c830b0cd7d180aee3fc4cd80d0de1e582")
 
     endif()
 
@@ -128,7 +142,7 @@ if(APPLE)
         execute_process(WORKING_DIRECTORY ${r_pkg_SOURCE_DIR}
                         COMMAND tar -xf R-fw.pkg/Payload)
 
-        if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
+        if(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
 
           execute_process(WORKING_DIRECTORY ${r_pkg_SOURCE_DIR}
                           COMMAND tar -xf tcltk.pkg/Payload -C ${r_pkg_r_home}/)
@@ -136,6 +150,35 @@ if(APPLE)
           execute_process(
             WORKING_DIRECTORY ${r_pkg_SOURCE_DIR}
             COMMAND tar -xf texinfo.pkg/Payload -C ${r_pkg_r_home}/)
+
+          # Downloading the gfortran
+
+          message(CHECK_START "Downloading gfortran")
+
+          fetchcontent_declare(
+            gfortran_tar_gz
+            URL "https://mac.r-project.org/libs-arm64/gfortran-f51f1da0-darwin20.0-arm64.tar.gz"
+            URL_HASH
+              SHA256=e7a5272fcbe002e9e22effc18bba01c352ca95f63dc3264865d9f8020ac55821
+            DOWNLOAD_NO_EXTRACT ON
+            DOWNLOAD_NAME gfortran.tar.gz)
+
+          fetchcontent_makeavailable(gfortran_tar_gz)
+
+          if(gfortran_tar_gz_POPULATED)
+
+            message(CHECK_PASS "done.")
+
+            execute_process(WORKING_DIRECTORY ${gfortran_tar_gz_SOURCE_DIR}
+                            COMMAND tar xzf gfortran.tar.gz -C ${r_pkg_r_home}/)
+
+            set(GFORTRAN_PATH ${R_OPT_PATH}/R/arm64/bin)
+
+          else()
+
+            message(CHECK_FAIL "unsuccessful")
+
+          endif()
 
         else()
 
@@ -150,9 +193,55 @@ if(APPLE)
             COMMAND tar -xf texinfo.pkg/Payload --strip-components=2 -C
                     ${r_pkg_r_home}/opt)
 
-        endif()
+          # Downloading the gfortran
 
-        message(CHECK_PASS "done.")
+          message(CHECK_START "Downloading gfortran")
+
+          fetchcontent_declare(
+            gfortran_dmg
+            URL "https://mac.r-project.org/tools/gfortran-8.2-Mojave.dmg"
+            URL_HASH
+              SHA256=81d379231ba5671a5ef1b7832531f53be5a1c651701a61d87e1d877c4f06d369
+            DOWNLOAD_NO_EXTRACT ON
+            DOWNLOAD_NAME gfortran.dmg)
+
+          fetchcontent_makeavailable(gfortran_dmg)
+
+          if(gfortran_dmg_POPULATED)
+
+            message(CHECK_PASS "done.")
+
+            # message(CHECK_START "Unpacking the payloads.")
+            execute_process(WORKING_DIRECTORY ${gfortran_dmg_SOURCE_DIR}
+                            COMMAND hdiutil attach gfortran.dmg)
+
+            execute_process(
+              WORKING_DIRECTORY /Volumes/gfortran-8.2-Mojave/gfortran-8.2-Mojave
+              COMMAND ${CMAKE_COMMAND} -E copy gfortran.pkg
+                      ${gfortran_dmg_SOURCE_DIR}/)
+
+            execute_process(WORKING_DIRECTORY ${gfortran_dmg_SOURCE_DIR}
+                            COMMAND xar -xf gfortran.pkg)
+
+            execute_process(WORKING_DIRECTORY ${gfortran_dmg_SOURCE_DIR}
+                            COMMAND tar -xf Payload)
+
+            execute_process(
+              WORKING_DIRECTORY ${gfortran_dmg_SOURCE_DIR}
+              COMMAND ${CMAKE_COMMAND} -E copy_directory usr/local
+                      ${r_pkg_r_home}/opt/local/)
+
+            execute_process(COMMAND hdiutil detach /Volumes/gfortran-8.2-Mojave)
+
+            set(GFORTRAN_PATH ${R_OPT_PATH}/local/gfortran/bin)
+
+          else()
+
+            message(CHECK_FAIL "unsuccessful")
+
+          endif()
+
+        endif()
 
         message(CHECK_START
                 "Copying the 'R.framework' to the jasp-desktop/Frameworks.")
@@ -165,6 +254,21 @@ if(APPLE)
         message(CHECK_PASS "done.")
       else()
         message(CHECK_FAIL "failed.")
+      endif()
+
+      find_program(
+        FORTRAN_EXECUTABLE
+        NAMES gfortran
+        PATHS ${GFORTRAN_PATH}
+        NO_DEFAULT_PATH
+        DOC "'gfortran' is needed for building some of the R packages")
+
+      if(NOT FORTRAN_EXECUTABLE)
+        message(CHECK_FAIL "not found")
+        message(FATAL_ERROR "Please install 'gfortran' before continuing.")
+      else()
+        message(CHECK_PASS "found")
+        message(STATUS "  ${FORTRAN_EXECUTABLE}")
       endif()
 
       # --------------------------------------------------------
@@ -195,7 +299,8 @@ if(APPLE)
           ${CMAKE_COMMAND} -D
           NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
           -D PATH=${R_HOME_PATH} -D R_HOME_PATH=${R_HOME_PATH} -D
-          R_DIR_NAME=${R_DIR_NAME} -D SIGNING=1 -D
+          R_DIR_NAME=${R_DIR_NAME} -D
+          SIGNING_IDENTITY=${APPLE_CODESIGN_IDENTITY} -D SIGNING=1 -D
           CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
           ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake)
 
@@ -203,7 +308,7 @@ if(APPLE)
       message(CHECK_START "Patching /bin/exec/R")
       execute_process(
         # COMMAND_ECHO STDOUT
-        ERROR_QUIET OUTPUT_QUIET
+        # ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}
         COMMAND
           bash ${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
@@ -218,24 +323,18 @@ if(APPLE)
       set(SIGNING_RESULT "timeout")
       while((${SIGNING_RESULT} MATCHES "timeout") OR (${SIGNING_RESULT} STREQUAL
                                                       "1"))
-        message(STATUS "${SIGNING_RESULT}")
         execute_process(
-          COMMAND_ECHO STDOUT
+          # COMMAND_ECHO STDOUT
           # ERROR_QUIET OUTPUT_QUIET
-          TIMEOUT 60
+          TIMEOUT 30
           WORKING_DIRECTORY ${R_HOME_PATH}
           COMMAND
-            /usr/bin/codesign --force --verbose --deep
-            ${CODESIGN_TIMESTAMP_FLAG} --sign "${APPLE_CODESIGN_IDENTITY}"
-            --options runtime "${R_HOME_PATH}/bin/exec/R"
+            codesign --force --verbose --deep ${CODESIGN_TIMESTAMP_FLAG} --sign
+            ${APPLE_CODESIGN_IDENTITY} --options runtime
+            "${R_HOME_PATH}/bin/exec/R"
           RESULT_VARIABLE SIGNING_RESULT
           OUTPUT_VARIABLE SIGNING_OUTPUT
-          ERROR_VARIABLE SIGNING_ERROR
-          OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_STRIP_TRAILING_WHITESPACE)
-
-        message(STATUS "SIGNING_RESULT: ${SIGNING_RESULT}")
-        message(STATUS "SIGNING_OUTPUT: ${SIGNING_OUTPUT}")
-        message(STATUS "SIGNING_ERROR:  ${SIGNING_ERROR}")
+          ERROR_VARIABLE SIGNING_ERROR)
       endwhile()
 
       if(NOT (SIGNING_RESULT MATCHES "timeout"))
@@ -244,16 +343,14 @@ if(APPLE)
         message(CHECK_FAIL "unsuccessful")
       endif()
 
-      execute_process(WORKING_DIRECTORY ${R_HOME_PATH} COMMAND spctl -a -vvv
-                                                               bin/exec/R)
-
-      execute_process(WORKING_DIRECTORY ${R_HOME_PATH} COMMAND ./R RHOME)
-
       execute_process(
         # COMMAND_ECHO STDOUT
         ERROR_QUIET OUTPUT_QUIET
         WORKING_DIRECTORY ${R_HOME_PATH}/bin
         COMMAND ln -s ../../../../../../Frameworks Frameworks)
+
+      execute_process(WORKING_DIRECTORY ${R_OPT_PATH}/R/arm64/gfortran
+                      COMMAND ln -sfn ${CMAKE_OSX_SYSROOT} SDK)
 
       # ------------------------
 
@@ -351,8 +448,8 @@ if(APPLE)
         ${CMAKE_COMMAND} -D
         NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
         -D PATH=${R_HOME_PATH}/library/RInside -D R_HOME_PATH=${R_HOME_PATH} -D
-        R_DIR_NAME=${R_DIR_NAME} -D SIGNING=1 -D
-        CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
+        R_DIR_NAME=${R_DIR_NAME} -D SIGNING_IDENTITY=${APPLE_CODESIGN_IDENTITY}
+        -D SIGNING=1 -D CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
         ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake)
 
     execute_process(
@@ -363,8 +460,8 @@ if(APPLE)
         ${CMAKE_COMMAND} -D
         NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
         -D PATH=${R_HOME_PATH}/library/Rcpp -D R_HOME_PATH=${R_HOME_PATH} -D
-        R_DIR_NAME=${R_DIR_NAME} -D SIGNING=1 -D
-        CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
+        R_DIR_NAME=${R_DIR_NAME} -D SIGNING_IDENTITY=${APPLE_CODESIGN_IDENTITY}
+        -D SIGNING=1 -D CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
         ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake)
 
     message(CHECK_PASS "successful.")
@@ -419,7 +516,7 @@ elseif(WIN32)
     set(R_PACKAGE_NAME "R-${R_VERSION}-win.exe")
     set(R_DOWNLOAD_URL
         "https://cran.r-project.org/bin/windows/base/R-${R_VERSION}-win.exe")
-    set(R_PACKAGE_HASH "776384c989ea061728e781b6b9ce5b92")
+    set(R_PACKAGE_HASH "f02b305ebec458e8ba0fea9ebb0cebb3")
 
     fetchcontent_declare(
       r_win_exe
@@ -474,7 +571,7 @@ elseif(WIN32)
     message(CHECK_START "Installing the 'RInside' and 'Rcpp'")
 
     file(
-      WRITE ${CMAKE_BINARY_DIR}/Modules/renv-root/install-RInside.R
+      WRITE ${MODULES_RENV_ROOT_PATH}/install-RInside.R
       "install.packages(c('RInside', 'Rcpp'), type='binary', repos='${R_REPOSITORY}' ${USE_LOCAL_R_LIBS_PATH}, INSTALL_opts='--no-multiarch --no-docs --no-test-load')"
     )
 
@@ -483,7 +580,7 @@ elseif(WIN32)
       ERROR_QUIET OUTPUT_QUIET
       WORKING_DIRECTORY ${R_BIN_PATH}
       COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
-              --file=${CMAKE_BINARY_DIR}/Modules/renv-root/install-RInside.R)
+              --file=${MODULES_RENV_ROOT_PATH}/install-RInside.R)
 
     if(NOT EXISTS ${R_LIBRARY_PATH}/RInside)
       message(CHECK_FAIL "unsuccessful.")
@@ -575,7 +672,7 @@ elseif(LINUX)
     if(_R_H)
       get_filename_component(R_INCLUDE_PATH ${_R_H} DIRECTORY)
       message(CHECK_PASS "found")
-      message("  ${_R_H}")
+      message(STATUS "  ${_R_H}")
     else()
       message(CHECK_FAIL "not found")
       message(FATAL_ERROR "R.h is necessary for building R-Interface library.")

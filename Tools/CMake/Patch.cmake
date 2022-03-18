@@ -79,7 +79,7 @@ else()
 
         execute_process(
           # COMMAND_ECHO STDOUT
-          # ERROR_QUIET OUTPUT_QUIET
+          ERROR_QUIET OUTPUT_QUIET
           WORKING_DIRECTORY ${PATH}
           COMMAND
             install_name_tool -change "@rpath/libtbbmalloc.dylib"
@@ -88,7 +88,7 @@ else()
 
         execute_process(
           # COMMAND_ECHO STDOUT
-          # ERROR_QUIET OUTPUT_QUIET
+          ERROR_QUIET OUTPUT_QUIET
           WORKING_DIRECTORY ${PATH}
           COMMAND
             install_name_tool -change "@rpath/libtbbmalloc_proxy.dylib"
@@ -97,7 +97,7 @@ else()
 
         execute_process(
           # COMMAND_ECHO STDOUT
-          # ERROR_QUIET OUTPUT_QUIET
+          ERROR_QUIET OUTPUT_QUIET
           WORKING_DIRECTORY ${PATH}
           COMMAND
             install_name_tool -change "@rpath/libtbb.dylib"
@@ -109,6 +109,15 @@ else()
                   "@executable_path/../Modules/${MODULE}"
                   NEW_ID
                   ${FILE})
+
+      elseif(FILE MATCHES "/opt/R/arm64/gfortran/lib/")
+
+        string(
+          REPLACE
+            "${R_HOME_PATH}/opt/R/arm64/gfortran/lib/"
+            "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/opt/R/arm64/gfortran/lib/"
+            NEW_ID
+            ${FILE})
 
       elseif(FILE MATCHES "/Modules/jasp")
 
@@ -167,6 +176,97 @@ else()
           "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/lib"
       )
 
+      # Changing the `R_HOME/opt/jags/lib` prefix
+      # This only applies on .so inside the /opt/jags/lib/JAGS/modules-4/
+      execute_process(
+        # COMMAND_ECHO STDOUT
+        ERROR_QUIET OUTPUT_QUIET
+        WORKING_DIRECTORY ${PATH}
+        COMMAND
+          bash ${NAME_TOOL_PREFIX_PATCHER} "${FILE}"
+          "${R_HOME_PATH}/opt/jags/lib"
+          "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/opt/jags/lib"
+      )
+
+      if(R_DIR_NAME MATCHES "arm64")
+
+        execute_process(
+          # COMMAND_ECHO STDOUT
+          ERROR_QUIET OUTPUT_QUIET
+          WORKING_DIRECTORY ${PATH}
+          COMMAND
+            install_name_tool -change
+            "${R_HOME_PATH}/opt/R/arm64/gfortran/lib/libgfortran.dylib"
+            "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/lib/libgfortran.5.dylib"
+            "${FILE}")
+
+        execute_process(
+          # COMMAND_ECHO STDOUT
+          ERROR_QUIET OUTPUT_QUIET
+          WORKING_DIRECTORY ${PATH}
+          COMMAND
+            bash ${NAME_TOOL_PREFIX_PATCHER} "${FILE}"
+            "/opt/R/arm64/gfortran/lib"
+            "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/opt/R/arm64/gfortran/lib"
+        )
+
+        execute_process(
+          # COMMAND_ECHO STDOUT
+          ERROR_QUIET OUTPUT_QUIET
+          WORKING_DIRECTORY ${PATH}
+          COMMAND
+            bash ${NAME_TOOL_PREFIX_PATCHER} "${FILE}"
+            "${R_HOME_PATH}/opt/R/arm64/gfortran/lib"
+            "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/opt/R/arm64/gfortran/lib"
+        )
+
+      else()
+
+        execute_process(
+          # COMMAND_ECHO STDOUT
+          ERROR_QUIET OUTPUT_QUIET
+          WORKING_DIRECTORY ${PATH}
+          COMMAND
+            install_name_tool -change
+            "${R_HOME_PATH}/opt/local/gfortran/lib/libgfortran.dylib"
+            "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/lib/libgfortran.5.dylib"
+            "${FILE}")
+
+        execute_process(
+          # COMMAND_ECHO STDOUT
+          ERROR_QUIET OUTPUT_QUIET
+          WORKING_DIRECTORY ${PATH}
+          COMMAND
+            install_name_tool -change
+            "${R_HOME_PATH}/opt/local/gfortran/lib/libquadmath.dylib"
+            "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/lib/libquadmath.0.dylib"
+            "${FILE}")
+
+        execute_process(
+          # COMMAND_ECHO STDOUT
+          ERROR_QUIET OUTPUT_QUIET
+          WORKING_DIRECTORY ${PATH}
+          COMMAND
+            bash ${NAME_TOOL_PREFIX_PATCHER} "${FILE}"
+            "/usr/local/gfortran/lib"
+            "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/opt/local/gfortran/lib"
+        )
+        # For whatever reason, the above command cannot replace the prefix of these libraries. I have tried to
+        # directly changed their 'id' even, and that didn't help either!
+        #   - libgcc_ext.10.4.dylib
+        #   - libgcc_ext.10.5.dylib
+
+        execute_process(
+          # COMMAND_ECHO STDOUT
+          ERROR_QUIET OUTPUT_QUIET
+          WORKING_DIRECTORY ${PATH}
+          COMMAND
+            bash ${NAME_TOOL_PREFIX_PATCHER} "${FILE}" "/usr/local/lib"
+            "@executable_path/../Frameworks/R.framework/Versions/${R_DIR_NAME}/Resources/opt/local/lib"
+        )
+
+      endif()
+
       # Changing the `/opt/R/arm64/lib` prefix
       # These are additional libraries needed for arm64.
       # @todo, at some point, we might need to have a case for them, but for now they are fine
@@ -184,7 +284,6 @@ else()
       else()
 
         # Changing the `/opt/jags/lib` prefix
-        message(STATUS "One of them: ${FILES}")
 
         if(R_DIR_NAME MATCHES "arm64")
 
@@ -225,28 +324,26 @@ else()
       # Signing the library
 
       if(${SIGNING})
-        set(APPLE_CODESIGN_IDENTITY
-            "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)")
+        set(APPLE_CODESIGN_IDENTITY "${SIGNING_IDENTITY}")
 
         set(SIGNING_RESULT "timeout")
 
         message(CHECK_START "--- Signing  ${FILE_SHORT_PATH}")
 
-        while(${SIGNING_RESULT} STREQUAL "timeout")
+        while(${SIGNING_RESULT} MATCHES "timeout")
 
           execute_process(
             # COMMAND_ECHO STDOUT
             ERROR_QUIET OUTPUT_QUIET
             TIMEOUT 30
             WORKING_DIRECTORY ${PATH}
-            COMMAND
-              /usr/bin/codesign --deep --force ${CODESIGN_TIMESTAMP_FLAG} --sign
-              "${APPLE_CODESIGN_IDENTITY}" --options runtime "${FILE}"
+            COMMAND codesign --deep --force ${CODESIGN_TIMESTAMP_FLAG} --sign
+                    ${APPLE_CODESIGN_IDENTITY} --options runtime "${FILE}"
             RESULT_VARIABLE SIGNING_RESULT
             OUTPUT_VARIABLE SIGNING_OUTPUT)
         endwhile()
 
-        if(NOT (SIGNING_RESULT STREQUAL "timeout"))
+        if(SIGNING_RESULT STREQUAL "0")
           message(CHECK_PASS "successful")
         else()
           message(CHECK_FAIL "unsuccessful")

@@ -130,11 +130,20 @@ int main(int argc, char *argv[])
 		}
 		else if(arg1 == junctionRemoveArg)
 		{
+			std::string junctionsCreationLog("junctions-recreated-successfully.log");
+			boost::filesystem::path	junctionsCreationLogPath = Utils::osPath(junctionsCreationLog);
+			if(exists(junctionsCreationLogPath))
+				remove(junctionsCreationLogPath);
+
 			std::string modulesFolder("Modules");
 			std::cout << "Engine started to remove the Modules folder" << std::endl;
 			boost::filesystem::path	modulesPath	= Utils::osPath(modulesFolder);
-			if(exists(modulesPath))
-				remove_all(modulesPath);
+			if(exists(modulesPath)) {
+                for(boost::filesystem::directory_entry& entry : boost::filesystem::directory_iterator(modulesPath)) {
+                    if(entry.path().string().find("\\jasp") != std::string::npos)
+                        remove_all(entry);
+                }
+			}
 			else
 				std::cout << "Error: Could not find the Modules folder" << std::endl;
 			exit(0);

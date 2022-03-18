@@ -1,18 +1,13 @@
-# JASP.cmake Module
+# JASP.cmake sets a lot of JASP parameters, e.g., version. In addition to adding
+# some of the CMake variables, it also add some _global_ definition to the compiler
+# based on the value of those variables, e.g., `-DJASP_DEBUG`.
 #
-# This file provides and sets most of the build options, e.g., GITHUB_PAT.
-# New options should be listed here, unless they are meant to be used
-# directly in the primary CMakeLists.txt file, e.g., USE_CCACHE, RUN_IWYU,
-# INSTALL_R_MODULES, INSTALL_R_REQUIRED_LIBRARIES.
-
-list(APPEND CMAKE_MESSAGE_CONTEXT JASP)
-
+#
 # TODOs:
-#
-# - [ ] Most of these add_definitions should turn into `set_target_definitions`
+#   - [ ] Most of these add_definitions should turn into `set_target_definitions`
 #       and link to their appropriate targets later on.
 
-find_package(Git)
+list(APPEND CMAKE_MESSAGE_CONTEXT JASP)
 
 if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
 
@@ -44,6 +39,9 @@ set(JASP_VERSION_MINOR ${PROJECT_VERSION_MINOR})
 set(JASP_VERSION_PATCH ${PROJECT_VERSION_PATCH})
 set(JASP_VERSION_TWEAK ${PROJECT_VERSION_TWEAK})
 
+set(JASP_VERSION ${CMAKE_PROJECT_VERSION})
+set(JASP_SHORT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
+
 message(STATUS "Version: ${CMAKE_PROJECT_VERSION}")
 
 # TODO:
@@ -54,14 +52,6 @@ option(JASP_PRINT_ENGINE_MESSAGES
 # set(PRINT_ENGINE_MESSAGES ${JASP_PRINT_ENGINE_MESSAGES})
 
 option(BUILD_MACOSX_BUNDLE "Whether or not building a macOS Bundle" OFF)
-
-# This is being set using the `Sys.setenv()` and later on when
-# we install a module using `{renv}`, the `{credentials}` package
-# knows how to read and use it.
-set(GITHUB_PAT CACHE STRING "GitHub Personal Access Token")
-if(GITHUB_PAT)
-  message(STATUS "GITHUB_PAT is set to ${GITHUB_PAT}")
-endif()
 
 if(NOT R_REPOSITORY)
   set(R_REPOSITORY

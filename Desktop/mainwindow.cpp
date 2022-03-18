@@ -39,6 +39,7 @@
 #include "tempfiles.h"
 #include "processinfo.h"
 #include "sharedmemory.h"
+#include "activemodules.h"
 
 #include "mainwindow.h"
 
@@ -98,7 +99,7 @@ MainWindow::MainWindow(QApplication * application) : QObject(application), _appl
 	JASPTIMER_START(MainWindowConstructor);
 
 	//This is the constructor, so _qml is not set yet and there is no need to check that with an if statement
-	QQuickStyle::setStyle("Default");// Because otherwise plasma on kde might mess things up...
+	QQuickStyle::setStyle("Basic");
 
 	TempFiles::init(ProcessInfo::currentPID()); // needed here so that the LRNAM can be passed the session directory
 
@@ -506,10 +507,8 @@ void MainWindow::loadQML()
 
 	//Load the ribbonmodel modules now because we have an actual qml context to do so in.
 	_ribbonModel->loadModules(	
-		{ 	"jaspDescriptives" }, //, "jaspTTests", "jaspAnova", "jaspMixedModels", "jaspRegression", "jaspFrequencies", "jaspFactor" },
-		{ 	"jaspDistributions", "jaspMetaAnalysis" } );
-		// , "jaspBain", "jaspCircular", "jaspDistributions" , "jaspEquivalenceTTests", "jaspJags", "jaspLearnBayes", "jaspMachineLearning",
-		// 	"jaspMetaAnalysis", "jaspNetwork"/*, "jaspProcessControl"*/, "jaspProphet", "jaspReliability", "jaspSem", "jaspSummaryStatistics", "jaspVisualModeling" });
+		ActiveModules::getActiveCommonModules(),
+		ActiveModules::getActiveExtraModules());
 
 	_engineSync->loadAllActiveModules();
 	_dynamicModules->startUpCompleted();

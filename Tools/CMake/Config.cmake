@@ -1,3 +1,24 @@
+# Config.cmake contains several CMake variables that are being used
+# for configuring the JASP project. In addition, it tries to set
+# other necessary variables based on users input, or deduct them when
+# possible.
+#
+# On Linux,
+#   - `CUSTOM_R_PATH` can be used to setup the CMake project to a custom
+#     R installation instead of the one find in PATH
+#   - `LINUX_LOCAL_BUILD` indicates whether or not, R packages should be
+#     located in the build folder, or the R_HOME. This is useful when you
+#     don't want to pollute your local R installation with JASP's build
+#     artifacts
+#   - `FLATPAK_USED` indicates whether we are building on Flatpak
+#
+# On macOS,
+#   - You can specifically choose to sign, `SIGN_AT_BUILD_TIME`, and timestamp
+#     your binaries during the build, `TIMESTAMP_AT_BUILD_TIME`.
+#     - Be aware that often you don't have any other choice, and if you don't
+#       sign your libraries, the build cannot continue because macOS wouldn't
+#       allow your binaries to be called, or be executed.
+
 list(APPEND CMAKE_MESSAGE_CONTEXT Config)
 
 set_property(GLOBAL PROPERTY JOB_POOLS sequential=1)
@@ -28,6 +49,8 @@ option(USE_CONAN "Whether to use CONAN package manager" OFF)
 # ------------
 
 if(APPLE)
+
+  set(USE_CONAN ON)
 
   option(SIGN_AT_BUILD_TIME
          "Whether to sign every library during the configuration and build" ON)
@@ -61,9 +84,9 @@ if(APPLE)
     set(CPACK_ARCH_SUFFIX "Intel")
   elseif(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
     set(CPACK_ARCH_SUFFIX "Apple")
-    set(DARWIN_ARCH "arm")
+    set(DARWIN_ARCH "aarch64")
   else()
-    set(CPACK_ARCH_SUFFIX ${CMAKE_HOST_SYSTEM_PROCESSOR})
+    set(CPACK_ARCH_SUFFIX ${CMAKE_OSX_ARCHITECTURES})
   endif()
 
   # Getting the major version of Xcode
@@ -75,15 +98,16 @@ if(APPLE)
     OUTPUT_VARIABLE XCODEBUILD_OUTPUT
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-  string(
-    SUBSTRING ${XCODEBUILD_OUTPUT}
-              6
-              2
-              XCODE_VERSION)
+  if(NOT (XCODEBUILD_OUTPUT STREQUAL ""))
+    string(
+      SUBSTRING ${XCODEBUILD_OUTPUT}
+                6
+                2
+                XCODE_VERSION)
+  else()
+    set(XCODE_VERSION "")
+  endif()
 
-  set(XCODE_VERSION
-      ""
-      CACHE PATH "Path to your custom R installation")
   if(XCODE_VERSION STREQUAL "")
     message(
       WARNING
@@ -99,7 +123,9 @@ if(APPLE)
     OUTPUT_VARIABLE DARWIN_VERSION
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-  set(CONFIGURE_HOST_FLAG ${DARWIN_ARCH}-apple-darwin${DARWIN_VERSION})
+  set(CONFIGURE_HOST_FLAG
+      ${CMAKE_OSX_ARCHITECTURES}-apple-darwin${DARWIN_VERSION})
+  message(STATUS "  ${CONFIGURE_HOST_FLAG}")
 
 endif()
 
@@ -107,6 +133,24 @@ if(WIN32)
 
   set(USE_CONAN ON)
   set(SYSTEM_TYPE WIN32)
+
+  message(STATUS ${MSVC_TOOLSET_VERSION})
+  message(STATUS ${MSVC_VERSION})
+
+  set(VC_MERGE_MODULE_NAME
+      "Microsoft_VC143_CRT_x64.msm"
+      CACHE PATH "Module Merge Name")
+  if(MSVC_VERSION GREATER "1930")
+    set(VC_TOOLS_REDIST_DIR_VARIABLE "%VCINSTALLDIR%")
+    set(VC_VARS_PATH_NATIVE
+        "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build"
+    )
+  elseif(MSVC_VERSION GREATER "1920")
+    set(VC_TOOLS_REDIST_DIR_VARIABLE "%VCToolsRedistDir%")
+    set(VC_VARS_PATH_NATIVE
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Auxiliary\\Build"
+    )
+  endif()
 
 endif()
 
@@ -147,10 +191,10 @@ endif()
 # I will consider turning this off, and letting Qt does it
 # when everything else worked properly
 
-if(INSTALL_R_MODULES AND (GITHUB_PAT STREQUAL ""))
+message(CHECK_START "Looking if its set as an environment variable.")
+set(GITHUB_PAT $ENV{GITHUB_PAT})
 
-  message(STATUS "GITHUB_PAT is not set")
-  message(CHECK_START "Looking if its set as an environment variable.")
+if(INSTALL_R_MODULES)
 
   if(GITHUB_PAT STREQUAL "")
     message(CHECK_FAIL "not found")
@@ -159,9 +203,12 @@ if(INSTALL_R_MODULES AND (GITHUB_PAT STREQUAL ""))
         "You probably need to set the GITHUB_PAT; otherwise CMAKE cannot effectively communicate with GitHub."
     )
   endif()
+
   message(CHECK_PASS "found")
 
 endif()
+
+message(STATUS "GITHUB_PAT: ${GITHUB_PAT}")
 
 if(CCACHE_EXECUTABLE
    AND USE_CCACHE
@@ -186,11 +233,12 @@ endif()
 # ------ Code signing
 
 set(APPLE_CODESIGN_IDENTITY
-    "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)")
+    "AWJJ3YVK9B"
+    CACHE STRING "Code signing identity")
 set(APPLE_CODESIGN_ENTITLEMENTS
     "${CMAKE_SOURCE_DIR}/Tools/macOS/entitlements.plist")
 
-message(STATUS "Signing with ${APPLE_CODESIGN_IDENTITY}")
+message(STATUS "Signing with \"${APPLE_CODESIGN_IDENTITY}\"")
 
 # In case Qt is not in path
 # NEEDS TESTING

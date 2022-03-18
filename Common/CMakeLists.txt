@@ -1,3 +1,11 @@
+# This will build the Common library
+#
+# On Linux,
+#   - We need to link to the `librt.so`, and for some reason, CMake cannot find it
+#     easily, so, Libraries module tries to find it and provides it to Common here.
+#   - Since we are not using Conan, I link to the libjsoncpp, using the PkgConfig variables
+#
+#
 list(APPEND CMAKE_MESSAGE_CONTEXT Common)
 
 configure_file(appinfo.cpp.in appinfo.cpp)
@@ -26,14 +34,13 @@ target_include_directories(
          ${R_HOME_PATH}/include
          ${RCPP_PATH}/include
          #
-         ${LIBJSONCPP_INCLUDE_DIRS}
-         ${Boost_INCLUDE_DIRS})
+         $<$<PLATFORM_ID:Linux>:${_PKGCONFIG_LIB_JSONCPP_INCLUDEDIR}>)
 
 target_link_libraries(
   Common
   PUBLIC # jsoncpp
          $<$<BOOL:${USE_CONAN}>:jsoncpp::jsoncpp>
-         $<$<NOT:$<BOOL:${USE_CONAN}>>:${LIBJSONCPP_LINK_LIBRARIES}>
+         $<$<PLATFORM_ID:Linux>:${_PKGCONFIG_LIB_JSONCPP_LIBRARIES}>
          #
          LibArchive::LibArchive
          # Boost
@@ -45,40 +52,26 @@ target_link_libraries(
          #
          $<$<BOOL:${JASP_USES_QT_HERE}>:Qt::Core>)
 
-if(WINDOWS)
-  target_link_libraries(Common PUBLIC Boost::nowide)
-endif()
-
 target_compile_definitions(
   Common PUBLIC $<$<BOOL:${JASP_USES_QT_HERE}>:JASP_USES_QT_HERE>
                 $<$<BOOL:${JASP_TIMER_USED}>:PROFILE_JASP>)
 
-if(IWYU_EXECUTABLE AND RUN_IWYU)
-  set_target_properties(Common PROPERTIES CXX_INCLUDE_WHAT_YOU_USE
-                                          ${IWYU_EXECUTABLE})
-endif()
-
-# TODOs:
-#
-# - [ ] After confirming these, they can all be rewritten as generator-expressions
-# - [ ] I don't think most of the Boost stuffs have effect here, and they should
-#       probably move into `Dependencies.cmake` where I actually build Boost.
-#
 if(APPLE)
   target_compile_definitions(Common PUBLIC BOOST_INTERPROCESS_SHARED_DIR_FUNC)
-elseif(WIN32)
+elseif(WINDOWS)
+  target_link_libraries(Common PUBLIC Boost::nowide)
+
   target_compile_definitions(
     Common
     PUBLIC BOOST_INTERPROCESS_BOOTSTAMP_IS_SESSION_MANAGER_BASED
            BOOST_WINDOWS
            NOMINMAX
-           WIN32_LEAN_AND_MEAN
-           )
+           WIN32_LEAN_AND_MEAN)
+endif()
 
-  # TODO: I have no idea what these are. For now, for Windows build, I'm just
-  # translating the Qmake
-  #
-  # target_link_libraries(Common PUBLIC ole32 oleaut32)
+if(IWYU_EXECUTABLE AND RUN_IWYU)
+  set_target_properties(Common PROPERTIES CXX_INCLUDE_WHAT_YOU_USE
+                                          ${IWYU_EXECUTABLE})
 endif()
 
 list(POP_BACK CMAKE_MESSAGE_CONTEXT)

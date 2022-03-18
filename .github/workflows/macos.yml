@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - github-action-tests
+      - qt-6.2-cmake-cpp-17
 
 jobs:
   xcode:
@@ -28,11 +29,6 @@ jobs:
           security unlock-keychain -p $MACOS_KEYCHAIN_PWD build.keychain
           security import Certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_KEYCHAIN_PWD build.keychain
-      - name: Testing the Code Signing
-        run: |
-          touch Cleaner.sh
-          codesign --force --verbose --sign "Developer ID Application: Bruno Boutin (AWJJ3YVK9B)" Cleaner.sh
-          codesign --verify --verbose --display Cleaner.sh
       - name: Updating Homebrew
         run: brew update --preinstall
       - name: Preparing the Requirements
@@ -44,6 +40,6 @@ jobs:
           pkg-config --libs libarchive
       - uses: actions/checkout@v2
       - name: Configure
-        run: cmake -S . -B build -G Ninja -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DSIGN_AT_BUILD_TIME=OFF -DTIMESTAMP_AT_BUILD_TIME=OFF -DINSTALL_JASP_REQUIRED_LIBRARIES=ON -DINSTALL_R_FRAMEWORK=ON -DINSTALL_R_MODULES=ON -DCMAKE_PREFIX_PATH=/usr/local/opt/libarchive -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@1.1 -DUPDATE_JASP_SUBMODULES=OFF
-      # - name: Build
-      #   run: cmake --build build
+        run: cmake -S . -B build -G Ninja -D GITHUB_PAT=${{ secrets.GPAT_FOR_JASP }} -DSIGN_AT_BUILD_TIME=OFF -DTIMESTAMP_AT_BUILD_TIME=OFF -DINSTALL_JASP_REQUIRED_LIBRARIES=ON -DINSTALL_R_FRAMEWORK=ON -DINSTALL_R_MODULES=ON -DCMAKE_PREFIX_PATH=/usr/local/opt/libarchive -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@1.1
+      - name: Build
+        run: cmake --build build

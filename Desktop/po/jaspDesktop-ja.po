@@ -3755,12 +3755,12 @@ msgstr "正規化された表記を使用する"
 
 msgctxt "ModuleInstaller|"
 msgid "Install"
-msgstr ""
+msgstr "インストール"
 
 msgctxt "ModuleInstaller|"
 msgid "Press this to install your selected Module"
-msgstr ""
+msgstr "このボタンを押すと、選択したモジュールがインストールされます"
 
 msgctxt "ModuleInstaller|"
 msgid "Select a JASP Module to install"
-msgstr ""
+msgstr "インストールするJASPモジュールの選択"

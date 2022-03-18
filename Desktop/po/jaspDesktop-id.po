@@ -3563,4 +3563,4 @@ msgstr ""
 
 msgctxt "ModuleInstaller|"
 msgid "Select a JASP Module to install"
-msgstr ""
+msgstr "Pilih modul JASP untuk diinstal"

@@ -2738,7 +2738,7 @@ msgstr "SortMenuModel 未使用可排序的父级调用"
 
 msgctxt "TextAreaBase|"
 msgid "Model applied"
-msgstr "应用模型"
+msgstr "模型已应用"
 
 msgctxt "TextInputBase|"
 msgid "The expression did not return a number."

@@ -40,25 +40,62 @@ set(JASP_EXTRA_MODULES
     "jaspMetaAnalysis"
     # "jaspDistributions"
     # "jaspEquivalenceTTests"
-    "jaspJags"
+    # "jaspJags"
     # "jaspReliability"
     # "jaspVisualModeling"
     # "jaspLearnBayes"
     # "jaspProcessControl"
 )
 
+list(
+  JOIN
+  JASP_COMMON_MODULES
+  "\",\n\t\t\t\""
+  JASP_COMMON_MODULES_QUOTED)
+
+list(
+  JOIN
+  JASP_EXTRA_MODULES
+  "\",\n\t\t\t\""
+  JASP_EXTRA_MODULES_QUOTED)
+
+configure_file(${CMAKE_SOURCE_DIR}/Desktop/activemodules.h.in
+               ${CMAKE_SOURCE_DIR}/Desktop/activemodules.h @ONLY)
+message(STATUS "activemodules.h is successfully generated...")
+
 if(("jaspMetaAnalysis" IN_LIST JASP_EXTRA_MODULES) OR ("jaspJags" IN_LIST
                                                        JASP_EXTRA_MODULES))
   if(LINUX)
+
     if(LINUX_LOCAL_BUILD)
-      set(jags_HOME ${R_OPT_PATH}/jags)
-    else()
-      # Flatpak
-      set(jags_HOME /usr)
+      set(jags_HOME /usr/local)
     endif()
+
+    if(FLATPAK_USED)
+      set(jags_HOME /app)
+    endif()
+
+    message(CHECK_START "Looking for libjags.so")
+    find_file(LIBJAGS libjags.so HINTS ${jags_HOME}/lib REQUIRED)
+    if(EXISTS ${LIBJAGS})
+      message(CHECK_PASS "found")
+      message(STATUS "  ${LIBJAGS}")
+    else()
+      message(CHECK_FAIL "not found")
+      message(
+        FATAL_ERROR
+          "ReadStat is required for building on Windows, please follow the build instruction before you continue."
+      )
+    endif()
+
   else()
     # On macOS and Windows jags will live inside R.framework/ or R/
     set(jags_HOME ${R_OPT_PATH}/jags)
+    if(WIN32)
+      set(jags_VERSION_H_PATH ${jags_HOME}/include/version.h)
+    else()
+      set(jags_VERSION_H_PATH ${jags_HOME}/include/JAGS/version.h)
+    endif()
   endif()
 else()
   set(jags_HOME "")
@@ -105,12 +142,8 @@ endif()
 
 message(STATUS "Installing Required R Modules...")
 
-add_custom_target(
-  jaspBase
+execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/R-Interface
-  DEPENDS ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
-          ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log
-          ${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log
   COMMAND ${CMAKE_COMMAND} -E copy_if_different jaspResults/R/writeImage.R
           ${MODULES_BINARY_PATH}/
   COMMAND ${CMAKE_COMMAND} -E copy_if_different jaspResults/R/zzzWrappers.R
@@ -119,6 +152,13 @@ add_custom_target(
           ${MODULES_BINARY_PATH}/
   COMMAND ${CMAKE_COMMAND} -E copy_if_different R/symlinkTools.R
           ${MODULES_BINARY_PATH}/)
+
+add_custom_target(
+  jaspBase
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/R-Interface
+  DEPENDS ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
+          ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log
+          ${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log)
 
 # This happens during the configuration!
 file(
@@ -173,9 +213,9 @@ add_custom_command(
     ${CMAKE_COMMAND} -D
     NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
     -D PATH=${R_HOME_PATH}/library -D R_HOME_PATH=${R_HOME_PATH} -D
-    R_DIR_NAME=${R_DIR_NAME} -D SIGNING=${IS_SIGNING} -D
-    CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
-    ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake
+    R_DIR_NAME=${R_DIR_NAME} -D SIGNING_IDENTITY=${APPLE_CODESIGN_IDENTITY} -D
+    SIGNING=${IS_SIGNING} -D CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG}
+    -P ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake
   COMMENT "------ Installing 'jaspBase'")
 
 add_custom_command(
@@ -189,9 +229,9 @@ add_custom_command(
     ${CMAKE_COMMAND} -D
     NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
     -D PATH=${R_HOME_PATH}/library -D R_HOME_PATH=${R_HOME_PATH} -D
-    R_DIR_NAME=${R_DIR_NAME} -D SIGNING=${IS_SIGNING} -D
-    CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
-    ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake
+    R_DIR_NAME=${R_DIR_NAME} -D SIGNING_IDENTITY=${APPLE_CODESIGN_IDENTITY} -D
+    SIGNING=${IS_SIGNING} -D CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG}
+    -P ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake
   COMMENT "------ Installing 'jaspGraphs'")
 
 add_custom_command(
@@ -206,9 +246,9 @@ add_custom_command(
     ${CMAKE_COMMAND} -D
     NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
     -D PATH=${R_HOME_PATH}/library -D R_HOME_PATH=${R_HOME_PATH} -D
-    R_DIR_NAME=${R_DIR_NAME} -D SIGNING=${IS_SIGNING} -D
-    CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
-    ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake
+    R_DIR_NAME=${R_DIR_NAME} -D SIGNING_IDENTITY=${APPLE_CODESIGN_IDENTITY} -D
+    SIGNING=${IS_SIGNING} -D CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG}
+    -P ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake
   COMMENT "------ Installing 'jaspTools'")
 
 if(INSTALL_R_MODULES)
@@ -291,8 +331,8 @@ if(INSTALL_R_MODULES)
         ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
         ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log
         ${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log
-        $<$<STREQUAL:"${MODULE}","jaspMetaAnalysis">:${jags_HOME}/lib/pkgconfig/jags.pc>
-        $<$<STREQUAL:"${MODULE}","jaspJags">:${jags_HOME}/lib/pkgconfig/jags.pc>
+        $<$<STREQUAL:"${MODULE}","jaspMetaAnalysis">:${jags_VERSION_H_PATH}>
+        $<$<STREQUAL:"${MODULE}","jaspJags">:${jags_VERSION_H_PATH}>
       COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
               --file=${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R
       COMMAND
@@ -337,92 +377,151 @@ if(INSTALL_R_MODULES)
       # - You can run `make jags-build` or `make jags-install` to just play with JAGS target
       #
 
-      if(NOT EXISTS ${jags_HOME})
+      if((NOT EXISTS ${jags_HOME}) AND (NOT LINUX))
         message(STATUS "Creating ${jags_HOME}")
         make_directory("${jags_HOME}")
       endif()
 
       if(WIN32)
 
-        # Manually copying the entire JAGS from MSYS2 into the R/opt/jags
-        # if later, we need any other libraries, we can use this method,
-        # automate it a bit nicer, and ship our external libraries
-        add_custom_command(
-          OUTPUT ${jags_HOME}/lib/pkgconfig/jags.pc
-          # bin
-          COMMAND ${CMAKE_COMMAND} -E make_directory ${jags_HOME}/bin
-          COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_BAT}
-                  ${jags_HOME}/bin/
-          COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS} ${jags_HOME}/bin/
-          COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_JRMATH}
-                  ${jags_HOME}/bin/
-          # libexe
-          COMMAND ${CMAKE_COMMAND} -E make_directory ${jags_HOME}/libexe
-          COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_JAGS_TERMINAL_EXE}
-                  ${jags_HOME}/libexe/
-          # headers
-          COMMAND ${CMAKE_COMMAND} -E make_directory ${jags_HOME}/include/JAGS
-          COMMAND ${CMAKE_COMMAND} -E copy_directory
-                  ${MINGW_LIBJAGS_HEADERS_PATH}/ ${jags_HOME}/include/JAGS
-          # libs
-          COMMAND ${CMAKE_COMMAND} -E make_directory ${jags_HOME}/lib
-          COMMAND ${CMAKE_COMMAND} -E copy_directory
-                  ${MINGW_LIBJAGS_LIBRARIES_PATH}/ ${jags_HOME}/lib/JAGS
-          COMMAND ${CMAKE_COMMAND} -E copy_directory
-                  ${MINGW_LIBJAGS_PKGCONFIG_PATH}/ ${jags_HOME}/lib/pkgconfig
-          COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_LIBJAGS_A}
-                  ${jags_HOME}/lib
-          COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_LIBJAGS_LA}
-                  ${jags_HOME}/lib
-          COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_LIBJRMATH_A}
-                  ${jags_HOME}/lib
-          COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_LIBJRMATH_LA}
-                  ${jags_HOME}/lib)
+        if(NOT TARGET jags)
 
-      else()
+          message(STATUS "Downloading `jags`")
+          fetchcontent_declare(
+            jags_win
+            URL "https://static.jasp-stats.org/development/JAGS-4.3.0-Windows.zip"
+            URL_HASH
+              SHA256=dd2429f44526643074bc65bf98c3a445c50513c051c5f7f5ec51e270ee465aeb
+          )
 
-        # ----- Downloading and Building jags
+          fetchcontent_makeavailable(jags_win)
 
-        fetchcontent_declare(
-          jags
-          URL "https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Source/JAGS-4.3.0.tar.gz"
-          URL_HASH
-            SHA256=8ac5dd57982bfd7d5f0ee384499d62f3e0bb35b5f1660feb368545f1186371fc
-        )
+          if(jags_win_POPULATED)
 
-        message(CHECK_START "Downloading 'jags'")
+            message(CHECK_PASS "successful")
 
-        fetchcontent_makeavailable(jags)
+            add_custom_command(
+              OUTPUT ${jags_VERSION_H_PATH}
+              # bin
+              COMMAND ${CMAKE_COMMAND} -E make_directory ${jags_HOME}/x64
+              COMMAND ${CMAKE_COMMAND} -E make_directory ${jags_HOME}/include
+              COMMAND ${CMAKE_COMMAND} -E copy_directory
+                      ${jags_win_SOURCE_DIR}/x64/ ${jags_HOME}/x64
+              COMMAND ${CMAKE_COMMAND} -E copy_directory
+                      ${jags_win_SOURCE_DIR}/include/ ${jags_HOME}/include)
 
-        if(jags_POPULATED)
+            add_custom_target(
+              jags
+              JOB_POOL sequential
+              DEPENDS ${jags_VERSION_H_PATH})
 
-          message(CHECK_PASS "successful.")
+          else()
 
-          add_custom_command(
-            WORKING_DIRECTORY ${jags_SOURCE_DIR}
-            OUTPUT ${jags_HOME}/lib/pkgconfig/jags.pc
-            COMMAND ${JAGS_F77_FLAG} ./configure --disable-dependency-tracking
-                    --prefix=${jags_HOME}
-            COMMAND ${MAKE}
-            COMMAND ${MAKE} install
-            COMMAND
-              ${CMAKE_COMMAND} -D
-              NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
-              -D PATH=${jags_HOME} -D R_HOME_PATH=${R_HOME_PATH} -D
-              R_DIR_NAME=${R_DIR_NAME} -D SIGNING=${IS_SIGNING} -D
-              CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
-              ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake
-            COMMENT "----- Preparing 'jags'")
+            message(CHECK_FAIL "failed")
 
-          if(NOT TARGET jags)
-            add_custom_target(jags DEPENDS ${jags_HOME}/lib/pkgconfig/jags.pc)
           endif()
 
-        else()
-
-          message(CHECK_FAIL "failed.")
+          # Manually copying the entire JAGS from MSYS2 into the R/opt/jags
+          # if later, we need any other libraries, we can use this method,
+          # automate it a bit nicer, and ship our external libraries
+          # add_custom_command(
+          #   OUTPUT ${jags_VERSION_H_PATH}
+          #   # bin
+          #   COMMAND ${CMAKE_COMMAND} -E make_directory ${jags_HOME}/x64
+          #   COMMAND ${CMAKE_COMMAND} -E make_directory ${jags_HOME}/x64/bin
+          #   COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_BAT} ${jags_HOME}/x64/bin/
+          #   COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS} ${jags_HOME}/x64/bin/
+          #   COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_JRMATH} ${jags_HOME}/x64/bin/
+          #   COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_JAGS_TERMINAL_EXE} ${jags_HOME}/x64/bin
+          #   COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIB_BLAS} ${jags_HOME}/x64/bin
+          #   COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIB_LAPACK} ${jags_HOME}/x64/bin
+          #   # headers
+          #   COMMAND ${CMAKE_COMMAND} -E make_directory ${jags_HOME}/include
+          #   COMMAND ${CMAKE_COMMAND} -E copy_directory ${MINGW_LIBJAGS_HEADERS_PATH}/ ${jags_HOME}/include
+          #   # libs
+          #   COMMAND ${CMAKE_COMMAND} -E make_directory ${jags_HOME}/x64/lib
+          #   COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_LIBJAGS_A} ${jags_HOME}/x64/lib
+          #   COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_LIBJAGS_LA} ${jags_HOME}/x64/lib
+          #   COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_LIBJRMATH_A} ${jags_HOME}/x64/lib
+          #   COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIBJAGS_LIBJRMATH_LA} ${jags_HOME}/x64/lib
+          #   COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIB_BLAS_DLL_A} ${jags_HOME}/x64/lib
+          #   COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_LIB_LAPACK_DLL_A} ${jags_HOME}/x64/lib
+          #   # modules
+          #   COMMAND ${CMAKE_COMMAND} -E make_directory ${jags_HOME}/x64/modules
+          #   COMMAND ${CMAKE_COMMAND} -E copy_directory ${MINGW_LIBJAGS_MODULES_PATH} ${jags_HOME}/x64/modules
+          #   # pkgconfig
+          #   COMMAND ${CMAKE_COMMAND} -E copy_directory ${MINGW_LIBJAGS_PKGCONFIG_PATH}/ ${jags_HOME}/lib/pkgconfig
+          #   )
 
         endif()
+
+      elseif(APPLE)
+
+        # ----- Downloading and Building jags
+        if(NOT TARGET jags)
+
+          fetchcontent_declare(
+            jags
+            URL "https://sourceforge.net/projects/mcmc-jags/files/JAGS/4.x/Source/JAGS-4.3.0.tar.gz"
+            URL_HASH
+              SHA256=8ac5dd57982bfd7d5f0ee384499d62f3e0bb35b5f1660feb368545f1186371fc
+          )
+
+          message(CHECK_START "Downloading 'jags'")
+
+          fetchcontent_makeavailable(jags)
+
+          if(jags_POPULATED)
+
+            message(CHECK_PASS "successful.")
+
+            set(JAGS_F77_FLAG "F77=${FORTRAN_EXECUTABLE}")
+            set(JAGS_CFLAGS
+                "-g -O2 -arch ${CMAKE_OSX_ARCHITECTURES} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}"
+            )
+            set(JAGS_EXTRA_FLAGS_1 "--with-sysroot=${CMAKE_OSX_SYSROOT}")
+            set(JAGS_EXTRA_FLAGS_2 "--target=${CONFIGURE_HOST_FLAG}")
+            set(JAGS_CXXFLAGS "${JAGS_CFLAGS}")
+
+            add_custom_command(
+              JOB_POOL sequential
+              WORKING_DIRECTORY ${jags_SOURCE_DIR}
+              OUTPUT ${jags_VERSION_H_PATH}
+              COMMAND
+                export CFLAGS=${READSTAT_CFLAGS} && export
+                CXXFLAGS=${READSTAT_CXXFLAGS} && ${JAGS_F77_FLAG} ./configure
+                --disable-dependency-tracking --prefix=${jags_HOME}
+                ${JAGS_EXTRA_FLAGS_1} ${JAGS_EXTRA_FLAGS_2}
+              COMMAND ${MAKE}
+              COMMAND ${MAKE} install
+              COMMAND
+                ${CMAKE_COMMAND} -D
+                NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
+                -D PATH=${jags_HOME} -D R_HOME_PATH=${R_HOME_PATH} -D
+                R_DIR_NAME=${R_DIR_NAME} -D
+                SIGNING_IDENTITY=${APPLE_CODESIGN_IDENTITY} -D
+                SIGNING=${IS_SIGNING} -D
+                CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG} -P
+                ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake
+              COMMENT "----- Preparing 'jags'")
+
+            add_custom_target(
+              jags
+              JOB_POOL sequential
+              DEPENDS ${jags_VERSION_H_PATH})
+
+          else()
+
+            message(CHECK_FAIL "failed.")
+
+          endif()
+
+        endif()
+
+      elseif(LINUX)
+
+        # On Linux,
+        #   we only set the jags_HOME to the /usr/local/ or /app in case of FLATPAK
 
       endif()
 
@@ -430,7 +529,8 @@ if(INSTALL_R_MODULES)
       set(jags_LIBRARY_DIRS ${jags_HOME}/lib)
       set(jags_PKG_CONFIG_PATH ${jags_HOME}/lib/pkgconfig/)
 
-      # install-jaspMetaAnalysis.R needs to be reconfigured again
+      # The install-jaspMetaAnalysis.R and/or install-jaspJags.R need to be reconfigured
+      # for jags flags to be included as well
       configure_file(${INSTALL_MODULE_TEMPLATE_FILE}
                      ${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R @ONLY)
 

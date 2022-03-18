@@ -1,3 +1,24 @@
+# Pack.cmake packages the JASP binary
+#
+# On Windows,
+#   - We have two bundler, WIX and ZIP; and they can be called by their target name
+#       - `cmake --build . --target wix`
+#       - `cmake --build . --target zip`
+#   - In addition, there are two targets for collecting and recreating junctions that
+#     are being called automatically before the creation of WIX,
+#       - `cmake --build . --target recreate-junctions`
+#       - `cmake --build . --target collect-junctions`
+#
+# On macOS,
+#   - We are using the `create-dmg` script to create and design the DMG. You need to
+#     install it before you can configure JASP. You can download it from Homebrew
+#     using `brew install create-dmg`
+#       - `cmake --build . --target dmg`
+#   - You can also apply the binary for notarisation using the `notarise` command
+#       - `cmake --build . --target notarise`
+#   - Following the successful notarisation, you can staple the DMG using the `staple` target
+#       - `cmake --build . --target staple`
+#
 list(APPEND CMAKE_MESSAGE_CONTEXT Pack)
 
 set(CPACK_PACKAGE_NAME "JASP")
@@ -5,7 +26,6 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A Fresh Way to Do Statistics")
 set(CPACK_PACKAGE_HOMEPAGE_URL "https://jasp-stats.org")
 set(CPACK_PACKAGE_VENDOR "University of Amsterdam")
 set(CPACK_PACKAGE_CONTACT "EJ Wagenmakers")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "JASP")
 set(CPACK_PACKAGE_EXECUTABLES "JASP;JASPEngine")
 set(CPACK_CREATE_DESKTOP_LINKS "JASP")
 
@@ -21,16 +41,64 @@ set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 # set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_SOURCE_DIR}/COPYING.txt)
 
 set(CPACK_PACKAGE_DIRECTORY ${CPACK_PACKAGE_NAME})
+set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
+set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY ${CPACK_PACKAGE_NAME})
 
 # --- WIX
-set(CPACK_WIX_UPGRADE_GUID "")
-# set(CPACK_WIX_LICENSE_RTF "${CMAKE_SOURCE_DIR}/Tools/wix/jaspLicense.rtf")
+if(WIN32)
+  set(CPACK_GENERATOR "WIX")
+
+  add_custom_target(
+    collect-junctions
+    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+    BYPRODUCTS "${CMAKE_BINARY_DIR}/junctions.rds"
+    COMMAND cmd.exe /C CollectJunctions.cmd
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_BINARY_DIR}/junctions.rds" "${JASP_INSTALL_PREFIX}/")
+
+  add_custom_target(
+    recreate-junctions
+    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+    COMMAND cmd.exe /C RecreateJunctions.cmd)
+
+  add_custom_target(
+    wix
+    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+    DEPENDS "${CMAKE_BINARY_DIR}/junctions.rds"
+    BYPRODUCTS "${CMAKE_SOURCE_DIR}/JASPFilesFragment.wixobj"
+               "${CMAKE_SOURCE_DIR}/JASP.wixobj"
+               "${CMAKE_SOURCE_DIR}/JASP/JASP.msi"
+               "${CMAKE_SOURCE_DIR}/JASP/JASP.wixpdb"
+    COMMAND ${CMAKE_COMMAND} -E make_directory JASP
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_BINARY_DIR}/junctions.rds" "${JASP_INSTALL_PREFIX}/"
+    COMMAND cmd.exe /C WIX.cmd)
+
+  add_custom_target(
+    zip
+    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+    DEPENDS "${CMAKE_BINARY_DIR}/junctions.rds"
+    BYPRODUCTS "${CMAKE_SOURCE_DIR}/JASP/JASP-${JASP_VERSION}.msi"
+    COMMAND ${CMAKE_COMMAND} -E make_directory JASP
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_BINARY_DIR}/junctions.rds" "${JASP_INSTALL_PREFIX}/"
+    COMMAND cmd.exe /C ZIP.cmd)
+
+endif()
+
+set(CPACK_WIX_LICENSE_RTF "${CMAKE_SOURCE_DIR}/Tools/wix/jaspLicense.rtf")
 set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/Desktop/icon.ico")
 set(CPACK_WIX_PROPERTY_ARPHELPLINK "${CPACK_PACKAGE_HOMEPAGE_URL}")
 set(CPACK_WIX_UI_BANNER "${CMAKE_SOURCE_DIR}/Tools/wix/installerBanner.png")
 set(CPACK_WIX_UI_DIALOG "${CMAKE_SOURCE_DIR}/Tools/wix/installerBackground.png")
+# set(CPACK_WIX_TEMPLATE "${CMAKE_SOURCE_DIR}/Tools/wix/jasp.wxs")
+# set(CPACK_WIX_LIGHT_EXTENSIONS "WixUIExtension;WixUtilExtension")
 
-set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/Tools/macOS/icon.icns")
+if(WIN32)
+  set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/Desktop/icon.ico")
+else()
+  set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/Tools/macOS/icon.icns")
+endif()
 
 if(APPLE)
   set(CPACK_PACKAGE_FILE_NAME
@@ -54,7 +122,7 @@ if(APPLE)
     COMMAND ${CMAKE_COMMAND} -E copy "${CPACK_DMG_VOLUME_NAME}"
             ${CMAKE_BINARY_DIR}/JASP/
     COMMAND
-      /usr/bin/codesign --verbose --verify --deep --force --sign
+      codesign --verbose --verify --deep --force --sign
       "${APPLE_CODESIGN_IDENTITY}" --options runtime
       "JASP/${CPACK_DMG_VOLUME_NAME}"
     COMMENT "------ Creating the ${CPACK_DMG_VOLUME_NAME}")

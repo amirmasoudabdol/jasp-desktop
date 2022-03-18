@@ -1,21 +1,28 @@
-list(APPEND CMAKE_MESSAGE_CONTEXT Dependencies)
-
+# Dependencies.cmake tries to provide any dependencies that cannot be
+# installed, or configured using Conan. At the moment, this only includes
+# ReadStat which doesn't have a proper CMake or PkgConfig.
+#
 # Notes:
 #
 # - FetchContent variables will be lower cased, that's why we have
-#   weird variable names like r_win_exe_POPULATED.
+#   weird variable names readstat_POPULATED.
 # - "CMake 3.22 updated the FindPkgConfig module to allow passing
 #   arbitrary arguments to the pkgconfig executable." This could come handy
 #   later on when dealing with some of the more annoying dependencies
+#
+# On macOS,
+#   We can cross compiler, so, here I take care that right ARCH and target are set.
+#   I'm not fully trusting this and rather have a native build, but this seems to be
+#   working!
+#
+# On Linux,
+#   We can build for Flatpak, as well as a local build, ...
 
-# Adding caching for CPM, this is going to be useful later that we
-# want to have CI builds on GitHub, see here: https://github.com/cpm-cmake/CPM.cmake/wiki/Caching-with-CPM.cmake-and-ccache-on-GitHub-Actions
-# set(CPM_SOURCE_CACHE ${PROJECT_SOURCE_DIR}/.cache/CPM)
-# set(CPM_USE_LOCAL_PACKAGES ON)
+list(APPEND CMAKE_MESSAGE_CONTEXT Dependencies)
 
 add_custom_target(Dependencies)
 
-if(NOT WIN32)
+if(APPLE)
 
   add_dependencies(Dependencies readstat)
 
@@ -45,12 +52,22 @@ if(NOT WIN32)
 
     message(CHECK_PASS "successful.")
 
+    set(READSTAT_CFLAGS
+        "-g -O2 -arch ${CMAKE_OSX_ARCHITECTURES} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}"
+    )
+    set(READSTAT_EXTRA_FLAGS_1 "--with-sysroot=${CMAKE_OSX_SYSROOT}")
+    set(READSTAT_EXTRA_FLAGS_2 "--target=${CONFIGURE_HOST_FLAG}")
+    set(READSTAT_CXXFLAGS "${READSTAT_CFLAGS}")
+
     add_custom_command(
       WORKING_DIRECTORY ${readstat_SOURCE_DIR}
       OUTPUT ${readstat_BINARY_DIR}/include/readstat.h
              ${readstat_BINARY_DIR}/lib/libreadstat.a
-      COMMAND ./configure --enable-static --prefix=${readstat_BINARY_DIR}
-              ${Iconv_FLAGS_FOR_READSTAT}
+      COMMAND
+        export CFLAGS=${READSTAT_CFLAGS} && export CXXFLAGS=${READSTAT_CXXFLAGS}
+        && ./configure --enable-static --prefix=${readstat_BINARY_DIR}
+        ${Iconv_FLAGS_FOR_READSTAT} ${READSTAT_EXTRA_FLAGS_1}
+        ${READSTAT_EXTRA_FLAGS_2}
       COMMAND ${MAKE}
       COMMAND ${MAKE} install
       COMMENT "----- Preparing 'readstat'")
