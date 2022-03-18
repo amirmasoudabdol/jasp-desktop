@@ -8,7 +8,6 @@
 
 [requires]
 boost/1.78.0
-libiconv/1.16
 libarchive/3.5.2
 zlib/1.2.11
 zstd/1.5.2
