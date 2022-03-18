@@ -33,6 +33,10 @@ jobs:
         run: brew update --preinstall
       - name: Preparing the Requirements
         run: brew install automake bison flex cmake pkg-config brotli ninja conan
+      - name: Configuring Conan
+        run: |
+          conan profile new default --detect
+          conan profile show default
       - name: Install Qt
         uses: jurplel/install-qt-action@v2
         with:
