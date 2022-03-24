@@ -119,14 +119,14 @@ else()
     Qt6WebEngineQuick
     REQUIRED
     PATHS
-    ${Qt6WebEngineQuick_DIR}
+    $ENV{Qt6WebEngineQuick_DIR}
     NO_DEFAULT_PATH)
 
   find_package(
     Qt6Core5Compat
     REQUIRED
     PATHS
-    ${Qt6Core5Compat_DIR}
+    $ENV{Qt6Core5Compat_DIR}
     NO_DEFAULT_PATH)
 
   find_package(
