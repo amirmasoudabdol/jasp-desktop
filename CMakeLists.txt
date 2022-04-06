@@ -141,7 +141,9 @@ include(Modules)
 include(Install)
 
 # Packs and creates installer executable for Windows, and macOS
-include(Pack)
+if(NOT LINUX)
+	include(Pack)
+endif()
 
 if(NOT
    CMAKE_GENERATOR
