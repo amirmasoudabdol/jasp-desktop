@@ -20,30 +20,31 @@ list(APPEND CMAKE_MESSAGE_CONTEXT Modules)
 
 set(JASP_COMMON_MODULES
     "jaspDescriptives"
-    "jaspAnova"
-    "jaspFactor"
-    "jaspFrequencies"
-    "jaspRegression"
-    "jaspTTests"
-    "jaspMixedModels")
+    # "jaspAnova"
+    # "jaspFactor"
+    # "jaspFrequencies"
+    # "jaspRegression"
+    # "jaspTTests"
+    # "jaspMixedModels"
+)
 
 set(JASP_EXTRA_MODULES
-    "jaspProphet"
-    "jaspCircular"
-    "jaspAudit"
-    "jaspBain"
-    "jaspNetwork"
-    "jaspSem"
-    "jaspMachineLearning"
-    "jaspSummaryStatistics"
-    "jaspMetaAnalysis"
-    "jaspCochrane"
-    "jaspDistributions"
-    "jaspEquivalenceTTests"
-    "jaspJags"
-    "jaspReliability"
-    "jaspVisualModeling"
-    "jaspLearnBayes"
+    # "jaspProphet"
+    # "jaspCircular"
+    # "jaspAudit"
+    # "jaspBain"
+    # "jaspNetwork"
+    # "jaspSem"
+    # "jaspMachineLearning"
+    # "jaspSummaryStatistics"
+    # "jaspMetaAnalysis"
+    # "jaspCochrane"
+    # "jaspDistributions"
+    # "jaspEquivalenceTTests"
+    # "jaspJags"
+    # "jaspReliability"
+    # "jaspVisualModeling"
+    # "jaspLearnBayes"
     # "jaspProcessControl"
 )
 
@@ -149,8 +150,7 @@ add_custom_target(
   jaspBase
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/R-Interface
   DEPENDS ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
-          ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log
-          ${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log)
+          ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log)
 
 # This happens during the configuration!
 file(
@@ -178,16 +178,6 @@ file(
       cat(NULL, file='${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log')
     } else {
       install.packages('${PROJECT_SOURCE_DIR}/Engine/jaspGraphs/', type='source', repos=NULL ${USE_LOCAL_R_LIBS_PATH}, INSTALL_opts='--no-multiarch --no-docs --no-test-load')
-    }
-    ")
-
-file(
-  WRITE ${MODULES_RENV_ROOT_PATH}/install-jaspTools.R
-  "
-    if ('jaspTools' %in% installed.packages()) {
-      cat(NULL, file='${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log')
-    } else {
-      install.packages('${PROJECT_SOURCE_DIR}/Tools/jaspTools/', type='source', repos=NULL ${USE_LOCAL_R_LIBS_PATH}, INSTALL_opts='--no-multiarch --no-docs --no-test-load')
     }
     ")
 
@@ -229,23 +219,6 @@ add_custom_command(
     -P ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake
   COMMENT "------ Installing 'jaspGraphs'")
 
-add_custom_command(
-  WORKING_DIRECTORY ${R_HOME_PATH}
-  DEPENDS ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
-          ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log
-  OUTPUT ${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log
-  JOB_POOL sequential
-  COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
-          --file=${MODULES_RENV_ROOT_PATH}/install-jaspTools.R
-  COMMAND
-    ${CMAKE_COMMAND} -D
-    NAME_TOOL_PREFIX_PATCHER=${PROJECT_SOURCE_DIR}/Tools/macOS/install_name_prefix_tool.sh
-    -D PATH=${R_HOME_PATH}/library -D R_HOME_PATH=${R_HOME_PATH} -D
-    R_DIR_NAME=${R_DIR_NAME} -D SIGNING_IDENTITY=${APPLE_CODESIGN_IDENTITY} -D
-    SIGNING=${IS_SIGNING} -D CODESIGN_TIMESTAMP_FLAG=${CODESIGN_TIMESTAMP_FLAG}
-    -P ${PROJECT_SOURCE_DIR}/Tools/CMake/Patch.cmake
-  COMMENT "------ Installing 'jaspTools'")
-
 if(INSTALL_R_MODULES)
 
   # Cleaning the renv-path on Windows only, for now.
@@ -277,7 +250,6 @@ if(INSTALL_R_MODULES)
       WORKING_DIRECTORY ${R_HOME_PATH}
       DEPENDS ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
               ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log
-              ${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log
       COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
               --file=${MODULES_RENV_ROOT_PATH}/install-${MODULE}.R
       COMMAND
@@ -326,7 +298,6 @@ if(INSTALL_R_MODULES)
       DEPENDS
         ${MODULES_BINARY_PATH}/jaspBase-installed-successfully.log
         ${MODULES_BINARY_PATH}/jaspGraphs-installed-successfully.log
-        ${MODULES_BINARY_PATH}/jaspTools-installed-successfully.log
         $<$<STREQUAL:"${MODULE}","jaspMetaAnalysis">:${jags_VERSION_H_PATH}>
         $<$<STREQUAL:"${MODULE}","jaspJags">:${jags_VERSION_H_PATH}>
       COMMAND ${R_EXECUTABLE} --slave --no-restore --no-save
