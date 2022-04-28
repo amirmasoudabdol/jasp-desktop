@@ -3,7 +3,7 @@ name: macOS
 on:
   push:
     branches:
-      - macos-github-action
+      - github-action-debug
 
 jobs:
   xcode:
